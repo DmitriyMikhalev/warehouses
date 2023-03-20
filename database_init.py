@@ -1,0 +1,119 @@
+import os
+from contextlib import closing
+
+import psycopg2
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+OWNER_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS owner(
+        id SERIAL PRIMARY KEY,
+        first_name VARCHAR(15) NOT NULL,
+        last_name VARCHAR(15) NOT NULL,
+        email VARCHAR(20) NOT NULL UNIQUE
+    );
+"""
+WAREHOUSE_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS warehouse(
+        id SERIAL PRIMARY KEY,
+        owner_id INTEGER NOT NULL,
+        name VARCHAR(50) NOT NULL UNIQUE,
+        payload INTEGER NOT NULL,
+        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE
+    );
+"""
+VEHICLE_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS vehicle(
+        id SERIAL PRIMARY KEY,
+        owner_id INTEGER NOT NULL,
+        brand VARCHAR(15) NOT NULL,
+        payload SMALLINT NOT NULL,
+        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE
+    );
+"""
+SHOP_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS shop(
+        id SERIAL PRIMARY KEY,
+        owner_id INTEGER NOT NULL,
+        address VARCHAR(50) NOT NULL,
+        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE
+    );
+"""
+PRODUCT_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS product(
+        id SERIAL PRIMARY KEY,
+        article_number INTEGER NOT NULL UNIQUE,
+        name VARCHAR(50) NOT NULL
+    );
+"""
+PRODUCT_SHOP_ORDER_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS product_shop_order(
+        id SERIAL PRIMARY KEY,
+        product_id INTEGER NOT NULL,
+        shop_id INTEGER NOT NULL,
+        payload SMALLINT NOT NULL,
+        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
+        FOREIGN KEY (shop_id) REFERENCES shop (id) ON DELETE CASCADE
+    );
+"""
+TRANSIT_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS transit(
+        id SERIAL PRIMARY KEY,
+        warehouse_id INTEGER NOT NULL,
+        payload SMALLINT NOT NULL,
+        date_start TIMESTAMP NOT NULL,
+        date_end TIMESTAMP NOT NULL,
+        FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE
+    );
+"""
+VEHICLE_TRANSIT_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS vehicle_transit(
+        id SERIAL PRIMARY KEY,
+        transit_id INTEGER NOT NULL,
+        vehicle_id INTEGER NOT NULL,
+        FOREIGN KEY (transit_id) REFERENCES transit (id) ON DELETE CASCADE,
+        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE
+    );
+"""
+PRODUCT_TRANSIT_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS product_transit(
+        id SERIAL PRIMARY KEY,
+        transit_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        FOREIGN KEY (transit_id) REFERENCES transit (id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE
+    );
+"""
+
+
+COMMANDS = [
+    OWNER_TABLE_CMD,
+    WAREHOUSE_TABLE_CMD,
+    VEHICLE_TABLE_CMD,
+    SHOP_TABLE_CMD,
+    PRODUCT_TABLE_CMD,
+    PRODUCT_SHOP_ORDER_TABLE_CMD,
+    TRANSIT_TABLE_CMD,
+    VEHICLE_TRANSIT_TABLE_CMD,
+    PRODUCT_TRANSIT_TABLE_CMD
+]
+
+
+def create_tables(commands):
+    with closing(psycopg2.connect(
+        database=os.getenv('DB_NAME'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        host=os.getenv('DB_HOST'),
+        port=os.getenv('DB_PORT'))
+    ) as con:
+        with con.cursor() as cur:
+            for cmd in commands:
+                cur.execute(cmd)
+            con.commit()
+
+
+if __name__ == '__main__':
+    create_tables(commands=COMMANDS)
