@@ -63,6 +63,9 @@ LOAD_WAREHOUSES_CMDS = """
 
     INSERT INTO warehouse (name, address, payload, owner_id)
     VALUES ('Склад_2', 'Луговая 108', 250, 4);
+
+    INSERT INTO warehouse (name, address, payload, owner_id)
+    VALUES ('Склад_3', 'Пушкина 36а', 70, 5);
 """
 
 LOAD_TRANSIT_CMDS = """

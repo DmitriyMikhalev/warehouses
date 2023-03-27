@@ -93,6 +93,17 @@ PRODUCT_TRANSIT_TABLE_CMD = """
     );
 """
 
+PRODUCT_WAREHOUSE_CMD = """
+    CREATE TABLE IF NOT EXISTS product_warehouse(
+        id SERIAL PRIMARY KEY,
+        warehouse_id INTEGER,
+        product_id INTEGER,
+        payload INTEGER,
+        FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE
+    )
+"""
+
 PRODUCT_NAME_INDEX_CMD = """
     CREATE UNIQUE INDEX IF NOT EXISTS product_article_index ON product (
         name,
@@ -109,7 +120,8 @@ CREATE_TABLES_CMDS = [
     PRODUCT_SHOP_ORDER_TABLE_CMD,
     TRANSIT_TABLE_CMD,
     VEHICLE_TRANSIT_TABLE_CMD,
-    PRODUCT_TRANSIT_TABLE_CMD
+    PRODUCT_TRANSIT_TABLE_CMD,
+    PRODUCT_WAREHOUSE_CMD
 ]
 
 CREATE_INDEXES_CMDS = [

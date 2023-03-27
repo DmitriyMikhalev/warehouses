@@ -3,14 +3,16 @@ from contextlib import closing
 
 import psycopg2
 from dotenv import load_dotenv
+from psycopg2.extensions import connection
 
-from create_tables import CREATE_TABLES_CMDS, CREATE_INDEXES_CMDS
+from create_functions import CREATE_FUNCTIONS
+from create_tables import CREATE_INDEXES_CMDS, CREATE_TABLES_CMDS
 from fixtures import LOAD_DATA_CMDS
 
 load_dotenv()
 
 
-def create(db_connection, commands: list[str]) -> None:
+def create(db_connection: connection, commands: list[str]) -> None:
     with db_connection.cursor() as cursor:
         for cmd in commands:
             cursor.execute(cmd)
@@ -25,9 +27,10 @@ def main() -> None:
         host=os.getenv('DB_HOST'),
         port=os.getenv('DB_PORT'))
     ) as connection:
-        create(commands=CREATE_TABLES_CMDS, db_connection=connection)
-        create(commands=CREATE_INDEXES_CMDS, db_connection=connection)
-        create(commands=LOAD_DATA_CMDS, db_connection=connection)
+        # create(commands=CREATE_TABLES_CMDS, db_connection=connection)
+        # create(commands=CREATE_INDEXES_CMDS, db_connection=connection)
+        # create(commands=LOAD_DATA_CMDS, db_connection=connection)
+        create(commands=CREATE_FUNCTIONS, db_connection=connection)
 
 
 if __name__ == '__main__':
