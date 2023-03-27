@@ -12,9 +12,10 @@ WAREHOUSE_TABLE_CMD = """
         id SERIAL PRIMARY KEY,
         name VARCHAR(50) NOT NULL UNIQUE,
         address VARCHAR(50) NOT NULL,
-        payload INTEGER NOT NULL,
+        max_capacity INTEGER NOT NULL,
         owner_id INTEGER NOT NULL,
-        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE
+        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE,
+        CHECK(max_capacity > 0)
     );
 """
 
@@ -22,9 +23,10 @@ VEHICLE_TABLE_CMD = """
     CREATE TABLE IF NOT EXISTS vehicle(
         id SERIAL PRIMARY KEY,
         brand VARCHAR(30) NOT NULL,
-        payload SMALLINT NOT NULL,
+        max_capacity SMALLINT NOT NULL,
         owner_id INTEGER NOT NULL,
-        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE
+        FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE,
+        CHECK(max_capacity > 0)
     );
 """
 
@@ -51,13 +53,16 @@ PRODUCT_SHOP_ORDER_TABLE_CMD = """
         product_id INTEGER NOT NULL,
         shop_id INTEGER NOT NULL,
         warehouse_id INTEGER NOT NULL,
+        vehicle_id INTEGER NOT NULL,
         payload SMALLINT NOT NULL,
         date_start TIMESTAMP NOT NULL,
         date_end TIMESTAMP NOT NULL,
         FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
         FOREIGN KEY (shop_id) REFERENCES shop (id) ON DELETE CASCADE,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
-        CHECK(date_end > date_start)
+        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE,
+        CHECK(date_end > date_start),
+        CHECK(payload > 0)
     );
 """
 
@@ -89,18 +94,20 @@ PRODUCT_TRANSIT_TABLE_CMD = """
         product_id INTEGER NOT NULL,
         payload SMALLINT NOT NULL,
         FOREIGN KEY (transit_id) REFERENCES transit (id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE
+        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
+        CHECK(payload > 0)
     );
 """
 
 PRODUCT_WAREHOUSE_CMD = """
     CREATE TABLE IF NOT EXISTS product_warehouse(
         id SERIAL PRIMARY KEY,
-        warehouse_id INTEGER,
-        product_id INTEGER,
-        payload INTEGER,
+        warehouse_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        payload INTEGER NOT NULL,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
-        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE
+        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
+        CHECK(payload > 0)
     )
 """
 

@@ -27,9 +27,9 @@ def main() -> None:
         host=os.getenv('DB_HOST'),
         port=os.getenv('DB_PORT'))
     ) as connection:
-        # create(commands=CREATE_TABLES_CMDS, db_connection=connection)
-        # create(commands=CREATE_INDEXES_CMDS, db_connection=connection)
-        # create(commands=LOAD_DATA_CMDS, db_connection=connection)
+        create(commands=CREATE_TABLES_CMDS, db_connection=connection)
+        create(commands=CREATE_INDEXES_CMDS, db_connection=connection)
+        create(commands=LOAD_DATA_CMDS, db_connection=connection)
         create(commands=CREATE_FUNCTIONS, db_connection=connection)
 
 
