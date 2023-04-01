@@ -5,9 +5,9 @@ from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-DOTENV_PATH = os.path.join(BASE_DIR.parent.parent, '.env')
+DOTENV_PATH = BASE_DIR.parent.joinpath('.env')
 
-load_dotenv()
+load_dotenv(DOTENV_PATH)
 
 SECRET_KEY = os.getenv('DJANGO_KEY')
 
@@ -69,11 +69,11 @@ DATABASES = {
             default='db_name'
         ),
         'USER': os.getenv(
-            key='POSTGRES_USER',
+            key='DB_USER',
             default='db_user'
         ),
         'PASSWORD': os.getenv(
-            key='POSTGRES_PASSWORD',
+            key='DB_PASSWORD',
             default='password'
         ),
         'HOST': os.getenv(
@@ -113,3 +113,23 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+MIN_ARTICLE_NUMBER = 10000
+
+MAX_NAME_LENGTH = 30
+
+MAX_PRODUCT_NAME_LENGTH = 100
+
+MAX_EMAIL_LENGTH = MAX_NAME_LENGTH
+
+NAX_VEHICLE_BRAND_LENGTH = MAX_NAME_LENGTH
+
+MAX_ADDRESS_LENGTH = 50
+
+MAX_WAREHOUSE_NAME_LENGTH = 50
+
+TIMEZONE_OFFSET = 5.0
+
+ORDER_DAYS_MIN_OFFSET = 1
+
+ORDER_DAYS_MAX_OFFSET = 90
