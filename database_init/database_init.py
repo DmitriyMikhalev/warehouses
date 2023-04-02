@@ -8,8 +8,11 @@ from psycopg2.extensions import connection
 from create_functions import CREATE_FUNCTIONS
 from create_tables import CREATE_INDEXES_CMDS, CREATE_TABLES_CMDS
 from fixtures import LOAD_DATA_CMDS
+from pathlib import Path
 
-load_dotenv()
+DOTENV_PATH = Path(__file__).resolve().parent.parent.joinpath('.env')
+
+load_dotenv(dotenv_path=DOTENV_PATH)
 
 
 def create(db_connection: connection, commands: list[str]) -> None:

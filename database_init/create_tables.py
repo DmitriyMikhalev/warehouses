@@ -25,6 +25,7 @@ VEHICLE_TABLE_CMD = """
         brand VARCHAR(30) NOT NULL,
         max_capacity SMALLINT NOT NULL,
         owner_id INTEGER NOT NULL,
+        vin VARCHAR(17) NOT NULL UNIQUE,
         FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE,
         CHECK(max_capacity > 0)
     );

@@ -7,7 +7,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 DOTENV_PATH = BASE_DIR.parent.joinpath('.env')
 
-load_dotenv(DOTENV_PATH)
+load_dotenv(dotenv_path=DOTENV_PATH)
 
 SECRET_KEY = os.getenv('DJANGO_KEY')
 
@@ -122,7 +122,9 @@ MAX_PRODUCT_NAME_LENGTH = 100
 
 MAX_EMAIL_LENGTH = MAX_NAME_LENGTH
 
-NAX_VEHICLE_BRAND_LENGTH = MAX_NAME_LENGTH
+MAX_VEHICLE_BRAND_LENGTH = MAX_NAME_LENGTH
+
+VIN_LENGTH = 17
 
 MAX_ADDRESS_LENGTH = 50
 

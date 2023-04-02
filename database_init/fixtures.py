@@ -34,13 +34,13 @@ LOAD_SHOPS_CMDS = """
 
 LOAD_VEHICLES_CMDS = """
     INSERT INTO
-        vehicle (brand, max_capacity, owner_id)
+        vehicle (brand, max_capacity, owner_id, vin)
     VALUES
-        ('ГАЗон Next 10, 2021', 4, 1),
-        ('DongFeng AF 475410, 2022', 8, 2),
-        ('Daewoo Novus, 2023', 16, 2),
-        ('Daewoo Novus, 2022', 14, 2),
-        ('Hyundai MegaTruck, 2019', 25, 1);
+        ('ГАЗон Next 10, 2021', 4, 1, 95208256316690926),
+        ('DongFeng AF 475410, 2022', 8, 2, 08176425349020835),
+        ('Daewoo Novus, 2023', 16, 2, 17379753984359341),
+        ('Daewoo Novus, 2022', 14, 2, 47992628126358840),
+        ('Hyundai MegaTruck, 2019', 25, 1, 71061140506578487);
 """
 
 LOAD_WAREHOUSES_CMDS = """
