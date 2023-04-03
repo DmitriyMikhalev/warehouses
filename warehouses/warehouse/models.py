@@ -79,6 +79,9 @@ class Product(Model):
     def __str__(self):
         return f'[{self.article_number}] {self.name}'
 
+    def __repr__(self):
+        return f'[{self.article_number}] {self.name}'
+
 
 class ProductShopOrder(Model):
     date_start = DateTimeField(
@@ -153,11 +156,11 @@ class ProductShopOrder(Model):
         verbose_name = 'Заказ магазина'
         verbose_name_plural = 'Заказы магазина'
 
-    def __repr__(self):
-        return f'Заказ товара {self.product} --> {self.shop}'
-
     def __str__(self):
         return ''
+
+    def __repr__(self):
+        return f'Заказ товара {self.product} --> {self.shop}'
 
 
 class ProductTransit(Model):
@@ -241,6 +244,9 @@ class Shop(Model):
         verbose_name_plural = 'Магазины'
 
     def __str__(self):
+        return ''
+
+    def __repr__(self):
         return f'Магазин по адресу {self.address}'
 
 
@@ -295,11 +301,11 @@ class Transit(Model):
         verbose_name = 'Поставка на склад'
         verbose_name_plural = 'Поставки на склад'
 
-    def __repr__(self):
-        return f'Поставка на {self.warehouse}: {self.date_start.date()}'
-
     def __str__(self):
         return ''
+
+    def __repr__(self):
+        return f'Поставка на {self.warehouse}: {self.date_start.date()}'
 
 
 class Vehicle(Model):
@@ -321,7 +327,7 @@ class Vehicle(Model):
         max_length=VIN_LENGTH,
         unique=True,
         validators=(
-            RegexValidator(regex=rf'^[0-9]{VIN_LENGTH}$'),
+            RegexValidator(regex=r'^[0-9]{17}$'),
         ),
         verbose_name='VIN-номер'
     )
@@ -334,6 +340,9 @@ class Vehicle(Model):
         verbose_name_plural = 'Машины'
 
     def __str__(self):
+        return f'#{self.id} {self.brand}'
+
+    def __repr__(self):
         return f'#{self.id} {self.brand}'
 
 
@@ -359,7 +368,10 @@ class VehicleTransit(Model):
         verbose_name_plural = 'Поставки машиной'
 
     def __str__(self):
-        return f'{self.transit} машиной {self.vehicle}'
+        return ''
+
+    def __repr__(self):
+        return f'Транзит машиной {self.id}'
 
 
 class Warehouse(Model):
@@ -391,4 +403,7 @@ class Warehouse(Model):
         verbose_name_plural = 'Склады'
 
     def __str__(self):
+        return f'[{self.name}] {self.address}'
+
+    def __repr__(self):
         return f'[{self.name}] {self.address}'

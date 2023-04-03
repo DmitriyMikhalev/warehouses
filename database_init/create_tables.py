@@ -56,8 +56,8 @@ PRODUCT_SHOP_ORDER_TABLE_CMD = """
         warehouse_id INTEGER NOT NULL,
         vehicle_id INTEGER NOT NULL,
         payload SMALLINT NOT NULL,
-        date_start TIMESTAMP NOT NULL,
-        date_end TIMESTAMP NOT NULL,
+        date_start TIMESTAMPTZ NOT NULL,
+        date_end TIMESTAMPTZ NOT NULL,
         FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
         FOREIGN KEY (shop_id) REFERENCES shop (id) ON DELETE CASCADE,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
@@ -71,8 +71,8 @@ TRANSIT_TABLE_CMD = """
     CREATE TABLE IF NOT EXISTS transit(
         id SERIAL PRIMARY KEY,
         warehouse_id INTEGER NOT NULL,
-        date_start TIMESTAMP NOT NULL,
-        date_end TIMESTAMP NOT NULL,
+        date_start TIMESTAMPTZ NOT NULL,
+        date_end TIMESTAMPTZ NOT NULL,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
         CHECK(date_end > date_start)
     );
