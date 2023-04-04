@@ -35,6 +35,7 @@ SHOP_TABLE_CMD = """
     CREATE TABLE IF NOT EXISTS shop(
         id SERIAL PRIMARY KEY,
         address VARCHAR(50) NOT NULL,
+        name VARCHAR(50) NOT NULL UNIQUE,
         owner_id INTEGER NOT NULL,
         FOREIGN KEY (owner_id) REFERENCES owner (id) ON DELETE CASCADE
     );
@@ -48,31 +49,13 @@ PRODUCT_TABLE_CMD = """
     );
 """
 
-PRODUCT_SHOP_ORDER_TABLE_CMD = """
-    CREATE TABLE IF NOT EXISTS product_shop_order(
-        id SERIAL PRIMARY KEY,
-        product_id INTEGER NOT NULL,
-        shop_id INTEGER NOT NULL,
-        warehouse_id INTEGER NOT NULL,
-        vehicle_id INTEGER NOT NULL,
-        payload SMALLINT NOT NULL,
-        date_start TIMESTAMPTZ NOT NULL,
-        date_end TIMESTAMPTZ NOT NULL,
-        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
-        FOREIGN KEY (shop_id) REFERENCES shop (id) ON DELETE CASCADE,
-        FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
-        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE,
-        CHECK(date_end > date_start),
-        CHECK(payload > 0)
-    );
-"""
-
 TRANSIT_TABLE_CMD = """
     CREATE TABLE IF NOT EXISTS transit(
         id SERIAL PRIMARY KEY,
         warehouse_id INTEGER NOT NULL,
         date_start TIMESTAMPTZ NOT NULL,
         date_end TIMESTAMPTZ NOT NULL,
+        accepted BOOLEAN NOT NULL DEFAULT FALSE,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
         CHECK(date_end > date_start)
     );
@@ -100,6 +83,34 @@ PRODUCT_TRANSIT_TABLE_CMD = """
     );
 """
 
+ORDER_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS order_table(
+        id SERIAL PRIMARY KEY,
+        shop_id INTEGER NOT NULL,
+        warehouse_id INTEGER NOT NULL,
+        vehicle_id INTEGER NOT NULL,
+        date_start TIMESTAMPTZ NOT NULL,
+        date_end TIMESTAMPTZ NOT NULL,
+        accepted BOOLEAN NOT NULL DEFAULT FALSE,
+        FOREIGN KEY (shop_id) REFERENCES shop (id) ON DELETE CASCADE,
+        FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
+        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE,
+        CHECK(date_end > date_start)
+    );
+"""
+
+PRODUCT_ORDER_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS product_order(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL,
+        product_id INTEGER NOT NULL,
+        payload SMALLINT NOT NULL,
+        FOREIGN KEY (order_id) REFERENCES order_table (id) ON DELETE CASCADE,
+        FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
+        CHECK(payload > 0)
+    );
+"""
+
 PRODUCT_WAREHOUSE_CMD = """
     CREATE TABLE IF NOT EXISTS product_warehouse(
         id SERIAL PRIMARY KEY,
@@ -108,7 +119,8 @@ PRODUCT_WAREHOUSE_CMD = """
         payload INTEGER NOT NULL,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
-        CHECK(payload > 0)
+        CHECK(payload > 0),
+        UNIQUE(warehouse_id, product_id)
     )
 """
 
@@ -125,7 +137,7 @@ CREATE_TABLES_CMDS = [
     VEHICLE_TABLE_CMD,
     SHOP_TABLE_CMD,
     PRODUCT_TABLE_CMD,
-    PRODUCT_SHOP_ORDER_TABLE_CMD,
+    ORDER_TABLE_CMD,
     TRANSIT_TABLE_CMD,
     VEHICLE_TRANSIT_TABLE_CMD,
     PRODUCT_TRANSIT_TABLE_CMD,

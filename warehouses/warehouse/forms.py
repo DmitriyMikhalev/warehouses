@@ -1,66 +1,95 @@
 from django.db.models import Sum
+from datetime import datetime, timezone
 from django.forms import ModelForm, ValidationError
 
-from .models import ProductShopOrder, ProductTransit, ProductWarehouse
-from .utils import get_now_datetime, is_vehicle_available
+from .models import Order, ProductTransit, ProductWarehouse, VehicleTransit, Vehicle, Transit
+from .utils import get_inline_sum, get_now_datetime, is_vehicle_available, get_inline_objs_id
 
 
-class ProductShopOrderForm(ModelForm):
-    def clean(self):
-        cleaned_data = super().clean()
-        required_payload = cleaned_data.get('payload')
-        date_start = cleaned_data.get('date_start')
-        date_end = cleaned_data.get('date_end')
-        product = cleaned_data.get('product')
-        vehicle = cleaned_data.get('vehicle')
-        warehouse = cleaned_data.get('warehouse')
-
-        current_payload = ProductWarehouse.objects.filter(
-            product=product,
-            warehouse=warehouse
-        ).aggregate(sum=Sum('payload')).get('sum') or 0
-
-        positive_payload_before_start = ProductTransit.objects.filter(
-            product=product,
-            transit__warehouse=warehouse,
-            transit__date_start__gte=get_now_datetime(),
-            transit__date_end__lt=date_start
-        ).aggregate(sum=Sum('payload')).get('sum') or 0
-
-        negative_payload_before_start = ProductShopOrder.objects.filter(
-            product=product,
-            warehouse=warehouse,
-            date_start__gte=get_now_datetime(),
-            date_end__lt=date_start
-        ).aggregate(sum=Sum('payload')).get('sum') or 0
-
-        delta = positive_payload_before_start - negative_payload_before_start
-
-        if (val := current_payload + delta) < required_payload:
-            raise ValidationError(
-                message='Склад не содержит необходимое количество товара'
-                        + f' ({required_payload} > {val}).'
-            )
-
-        if not is_vehicle_available(
-            vehicle=vehicle,
-            date_start=date_start,
-            date_end=date_end
-        ):
-            raise ValidationError(
-                message='Машина в это время занята.'
-            )
-        raise ValidationError('asd')
-        return cleaned_data
-
+class OrderForm(ModelForm):
     class Meta:
         fields = (
             'date_start',
             'date_end',
-            'payload',
-            'product',
             'shop',
             'vehicle',
             'warehouse'
         )
-        model = ProductShopOrder
+        model = Order
+
+
+class ProductWarehouseInlineForm(ModelForm):
+    def clean(self):
+        """при создании склада проверка инлайна"""
+        cleaned_data = super().clean()
+        warehouse = cleaned_data['warehouse']
+        new_payload = get_inline_sum(
+            pattern=r'^product_warehouse-[0-9]+-payload$',
+            data=self.data
+        )
+
+        if new_payload > warehouse.max_capacity:
+            raise ValidationError(
+                message='Склад не сможет вместить такое количество товаров ('
+                        + f'{new_payload} > {warehouse.max_capacity}).'
+            )
+
+        return cleaned_data
+
+    class Meta:
+        fields = ('product', 'payload')
+        model = ProductWarehouse
+
+
+class ProductTransitInlineForm(ModelForm):
+    def clean(self):
+        """при создании поставки проверка инлайна"""
+        cleaned_data = super().clean()
+        print(cleaned_data)
+        warehouse = cleaned_data['transit'].warehouse
+        new_payload = get_inline_sum(
+            pattern=r'^product_transit-[0-9]+-payload$',
+            data=self.data
+        )
+        current_payload = ProductWarehouse.objects.filter(
+            warehouse=warehouse
+        ).aggregate(sum=Sum('payload')).get('sum') or 0
+
+        if (val := current_payload + new_payload) > warehouse.max_capacity:
+            raise ValidationError(
+                message='Склад не сможет вместить такое количество товаров ('
+                        + f'{val} > {warehouse.max_capacity}).'
+            )
+
+        return cleaned_data
+
+    class Meta:
+        fields = ('product', 'payload')
+        model = ProductTransit
+
+
+class VehicleTransitInlineForm(ModelForm):
+    def clean(self):
+        cleaned_data = super().clean()
+        transit = cleaned_data.get('transit')
+        vehicle_ids = get_inline_objs_id(
+            pattern=r'^vehicle_transit-[0-9]+-vehicle$',
+            data=self.data
+        )
+
+        if len(set(vehicle_ids)) != len(vehicle_ids):
+            raise ValidationError('Запрещено выбирать дважды одну машину.')
+
+        for vehicle in Vehicle.objects.filter(pk__in=vehicle_ids):
+            if not is_vehicle_available(
+                vehicle=vehicle,
+                date_start=transit.date_start,
+                date_end=transit.date_end
+            ):
+                raise ValidationError(f'Машина {vehicle} занята в это время.')
+
+        return cleaned_data
+
+    class Meta:
+        fields = ('vehicle',)
+        model = VehicleTransit

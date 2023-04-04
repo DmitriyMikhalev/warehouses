@@ -8,7 +8,7 @@ def get_inline_sum(pattern: str, data: dict[str, str]) -> int:
     res = 0
     for key, val in data.items():
         if re.match(pattern, key):
-            res += int(val)
+            res += int(val) or 0
 
     return res
 
@@ -23,7 +23,7 @@ def is_correct_timerange(start_1, end_1, start_2, end_2) -> bool:
 
 def is_vehicle_available(vehicle, date_start, date_end):
     VehicleTransit = apps.get_model('warehouse', 'VehicleTransit')
-    ProductShopOrder = apps.get_model('warehouse', 'ProductShopOrder')
+    Order = apps.get_model('warehouse', 'Order')
 
     for obj in VehicleTransit.objects.filter(
         vehicle=vehicle,
@@ -37,18 +37,27 @@ def is_vehicle_available(vehicle, date_start, date_end):
             end_2=date_end
         ):
             return False
-
-    for transit in ProductShopOrder.objects.filter(
+    print('ne bilo')
+    for order in Order.objects.filter(
         vehicle=vehicle,
         date_start__gte=date_start - timedelta(days=1),
         date_end__lte=date_end + timedelta(days=1)
     ):
         if not is_correct_timerange(
-            start_1=transit.date_start,
-            end_1=transit.date_end,
+            start_1=order.date_start,
+            end_1=order.date_end,
             start_2=date_start,
             end_2=date_end
         ):
             return False
 
     return True
+
+
+def get_inline_objs_id(pattern: str, data: dict[str, str]) -> list:
+    res = []
+    for key, val in data.items():
+        if re.match(pattern, key):
+            res.append(val)
+
+    return res

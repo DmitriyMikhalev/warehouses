@@ -2,7 +2,7 @@ from datetime import timedelta
 from django.core.validators import (EmailValidator, MaxValueValidator,
                                     MinValueValidator, RegexValidator)
 from django.db.models import (CASCADE, CharField, DateTimeField, F, ForeignKey,
-                              Model, PositiveIntegerField,
+                              Model, PositiveIntegerField, BooleanField,
                               PositiveSmallIntegerField, Q)
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from warehouses.settings import (MAX_ADDRESS_LENGTH, MAX_EMAIL_LENGTH,
@@ -10,9 +10,83 @@ from warehouses.settings import (MAX_ADDRESS_LENGTH, MAX_EMAIL_LENGTH,
                                  MAX_VEHICLE_BRAND_LENGTH,
                                  MAX_WAREHOUSE_NAME_LENGTH, MIN_ARTICLE_NUMBER,
                                  ORDER_DAYS_MAX_OFFSET, ORDER_DAYS_MIN_OFFSET,
-                                 VIN_LENGTH)
+                                 VIN_LENGTH, MAX_SHOP_NAME_LENGTH)
 
 from .utils import get_now_datetime
+
+
+class Order(Model):
+    accepted = BooleanField(
+        default=False,
+        verbose_name='Осуществлено'
+    )
+    date_start = DateTimeField(
+        validators=(
+            MinValueValidator(
+                limit_value=get_now_datetime() + timedelta(
+                    days=ORDER_DAYS_MIN_OFFSET
+                )
+            ),
+            MaxValueValidator(
+                limit_value=get_now_datetime() + timedelta(
+                    days=ORDER_DAYS_MAX_OFFSET
+                )
+            ),
+        ),
+        verbose_name='Начало'
+    )
+    date_end = DateTimeField(
+        validators=(
+            MinValueValidator(
+                limit_value=get_now_datetime() + timedelta(
+                    days=ORDER_DAYS_MIN_OFFSET
+                )
+            ),
+            MaxValueValidator(
+                limit_value=get_now_datetime() + timedelta(
+                    days=ORDER_DAYS_MAX_OFFSET
+                )
+            ),
+        ),
+        verbose_name='Конец'
+    )
+    shop = ForeignKey(
+        on_delete=CASCADE,
+        related_name='orders',
+        to='Shop',
+        verbose_name='Магазин'
+    )
+    vehicle = ForeignKey(
+        on_delete=CASCADE,
+        related_name='orders',
+        to='Vehicle',
+        verbose_name='Машина'
+    )
+    warehouse = ForeignKey(
+        on_delete=CASCADE,
+        related_name='orders',
+        to='Warehouse',
+        verbose_name='Склад'
+    )
+
+    class Meta:
+        constraints = (
+            CheckConstraint(
+                check=Q(date_end__gt=F('date_start')),
+                name='Дата начала раньше даты конца'
+            ),
+        )
+        db_table = 'order_table'
+        managed = False
+        ordering = ('date_start',)
+        verbose_name = 'Заказ магазина'
+        verbose_name_plural = 'Заказы магазина'
+
+    def __str__(self):
+        return ''
+
+    def __repr__(self):
+        return f'Заказ товара {self.product} --> {self.shop}'
 
 
 class Owner(Model):
@@ -83,84 +157,36 @@ class Product(Model):
         return f'[{self.article_number}] {self.name}'
 
 
-class ProductShopOrder(Model):
-    date_start = DateTimeField(
-        validators=(
-            MinValueValidator(
-                limit_value=get_now_datetime() + timedelta(
-                    days=ORDER_DAYS_MIN_OFFSET
-                )
-            ),
-            MaxValueValidator(
-                limit_value=get_now_datetime() + timedelta(
-                    days=ORDER_DAYS_MAX_OFFSET
-                )
-            ),
-        ),
-        verbose_name='Начало'
-    )
-    date_end = DateTimeField(
-        validators=(
-            MinValueValidator(
-                limit_value=get_now_datetime() + timedelta(
-                    days=ORDER_DAYS_MIN_OFFSET
-                )
-            ),
-            MaxValueValidator(
-                limit_value=get_now_datetime() + timedelta(
-                    days=ORDER_DAYS_MAX_OFFSET
-                )
-            ),
-        ),
-        verbose_name='Конец'
-    )
+class ProductOrder(Model):
     payload = PositiveSmallIntegerField(
         validators=(MinValueValidator(limit_value=1),),
         verbose_name='Масса товара (т)'
     )
+    order = ForeignKey(
+        on_delete=CASCADE,
+        related_name='product_order',
+        to='Order',
+        verbose_name='Заказ'
+    )
     product = ForeignKey(
         on_delete=CASCADE,
-        related_name='orders',
+        related_name='product_order',
         to='Product',
         verbose_name='Товар'
     )
-    shop = ForeignKey(
-        on_delete=CASCADE,
-        related_name='orders',
-        to='Shop',
-        verbose_name='Магазин'
-    )
-    vehicle = ForeignKey(
-        on_delete=CASCADE,
-        related_name='orders',
-        to='Vehicle',
-        verbose_name='Машина'
-    )
-    warehouse = ForeignKey(
-        on_delete=CASCADE,
-        related_name='orders',
-        to='Warehouse',
-        verbose_name='Склад'
-    )
 
     class Meta:
-        constraints = (
-            CheckConstraint(
-                check=Q(date_end__gt=F('date_start')),
-                name='Дата начала раньше даты конца'
-            ),
-        )
-        db_table = 'product_shop_order'
+        db_table = 'product_order'
         managed = False
-        ordering = ('date_start',)
-        verbose_name = 'Заказ магазина'
-        verbose_name_plural = 'Заказы магазина'
+        ordering = ('id',)
+        verbose_name = 'Товар в заказе'
+        verbose_name_plural = 'Товары в заказе'
 
     def __str__(self):
         return ''
 
     def __repr__(self):
-        return f'Заказ товара {self.product} --> {self.shop}'
+        return f'Состав поставки {self.transit.date_start.date()}'
 
 
 class ProductTransit(Model):
@@ -229,6 +255,11 @@ class ProductWarehouse(Model):
 
 class Shop(Model):
     address = CharField(max_length=MAX_ADDRESS_LENGTH, verbose_name='Адрес')
+    name = CharField(
+        db_index=True,
+        max_length=MAX_SHOP_NAME_LENGTH,
+        verbose_name='Название'
+    )
     owner = ForeignKey(
         on_delete=CASCADE,
         related_name='shops',
@@ -244,13 +275,17 @@ class Shop(Model):
         verbose_name_plural = 'Магазины'
 
     def __str__(self):
-        return ''
+        return f'{self.name}'
 
     def __repr__(self):
-        return f'Магазин по адресу {self.address}'
+        return f'{self.name} {self.address}'
 
 
 class Transit(Model):
+    accepted = BooleanField(
+        default=False,
+        verbose_name='Осуществлено'
+    )
     date_start = DateTimeField(
         validators=(
             MinValueValidator(
