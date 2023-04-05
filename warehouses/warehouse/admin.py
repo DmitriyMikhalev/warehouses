@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.contrib.admin import ModelAdmin, TabularInline
 from django.contrib.admin.actions import delete_selected
 
-from .forms import (ProductTransitInlineForm, ProductWarehouseInlineForm,
+from .forms import (ProductTransitInlineForm, ProductWarehouseInlineForm, TransitForm,
                     VehicleTransitInlineForm)
 from .models import (Order, Owner, Product, ProductTransit, ProductWarehouse,
                      Shop, Transit, Vehicle, VehicleTransit, Warehouse, ProductOrder)
@@ -90,22 +90,23 @@ class ProductOrderInline(DefaultInline):
     model = ProductOrder
     can_delete = True
     min_num = 1
+
     def get_max_num(self, request, obj=None):
         return Product.objects.count()
 
 
 class OrderInline(DefaultInline):
-    verbose_name_plural = 'Осуществленные заказы магазина'
+    verbose_name_plural = 'Неосуществленные заказы магазина'
     model = Order
     fields = (
         'date_start',
         'date_end',
-        'warehouse',
-        'vehicle'
+        'warehouse'
     )
+    show_change_link = True
 
     def get_queryset(self, request):
-        return super().get_queryset(request).filter(accepted=True)
+        return super().get_queryset(request).filter(accepted=False)
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -170,11 +171,12 @@ class WarehouseAdmin(ModelAdminListPerPage20):
 
 @admin.register(Transit)
 class TransitAdmin(ModelAdminListPerPage20):
-    list_display = ('id', 'date_start', 'date_end', 'warehouse')
+    list_display = ('accepted', 'date_start', 'date_end', 'warehouse')
     list_filter = ('date_start', 'date_end', 'accepted')
     search_fields = ('date_start', 'date_end')
     readonly_fields = ('accepted',)
     date_hierarchy = 'date_start'
+    form = TransitForm
     inlines = (
         ProductTransitInline,
         VehicleTransitInline,

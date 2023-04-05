@@ -72,7 +72,7 @@ class Order(Model):
         )
         db_table = 'order_table'
         managed = False
-        ordering = ('date_start',)
+        ordering = ('id',)
         verbose_name = 'Заказ магазина'
         verbose_name_plural = 'Заказы магазина'
 
@@ -80,7 +80,7 @@ class Order(Model):
         return ''
 
     def __repr__(self):
-        return f'Заказ товара {self.product} --> {self.shop}'
+        return f'Заказ #{self.id}'
 
 
 class Owner(Model):
@@ -424,7 +424,7 @@ class VehicleOrder(Model):
         return ''
 
     def __repr__(self):
-        return f'Машина в заказе {self.order.id}'
+        return f'Машина {self.vehicle} в заказе {self.order.id}'
 
 
 class VehicleTransit(Model):
@@ -458,7 +458,7 @@ class VehicleTransit(Model):
         return ''
 
     def __repr__(self):
-        return f'Транзит машиной {self.id}'
+        return f'Машина {self.vehicle} в поставке {self.transit.id}'
 
 
 class Warehouse(Model):

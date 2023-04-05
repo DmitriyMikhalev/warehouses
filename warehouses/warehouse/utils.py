@@ -1,14 +1,16 @@
 import re
+from zoneinfo import ZoneInfo
 from datetime import datetime as dt, timedelta, timezone
 from warehouses.settings import TIMEZONE_OFFSET
 from django.apps import apps
+from django.conf import settings
 
 
 def get_inline_sum(pattern: str, data: dict[str, str]) -> int:
     res = 0
     for key, val in data.items():
-        if re.match(pattern, key):
-            res += int(val) or 0
+        if re.match(pattern, key) and val != '':
+            res += int(val)
 
     return res
 
@@ -17,13 +19,22 @@ def get_now_datetime():
     return dt.now(tz=timezone(offset=timedelta(hours=TIMEZONE_OFFSET)))
 
 
+def get_datetime_deleted_timezone(date, time):
+    return dt.strptime(
+            date + ' ' + time,
+            '%d.%m.%Y %H:%M:%S'
+        ).replace(tzinfo=timezone.utc) - timedelta(
+            hours=settings.TIMEZONE_OFFSET
+        )
+
+
 def is_correct_timerange(start_1, end_1, start_2, end_2) -> bool:
     return end_1 < start_2 or start_1 > end_2
 
 
 def is_vehicle_available(vehicle, date_start, date_end):
     VehicleTransit = apps.get_model('warehouse', 'VehicleTransit')
-    Order = apps.get_model('warehouse', 'Order')
+    VehicleOrder = apps.get_model('warehouse', 'VehicleOrder')
 
     for obj in VehicleTransit.objects.filter(
         vehicle=vehicle,
@@ -36,29 +47,30 @@ def is_vehicle_available(vehicle, date_start, date_end):
             start_2=date_start,
             end_2=date_end
         ):
+            print(repr(obj))
             return False
 
-    for order in Order.objects.filter(
+    for obj in VehicleOrder.objects.filter(
         vehicle=vehicle,
-        date_start__gte=date_start - timedelta(days=1),
-        date_end__lte=date_end + timedelta(days=1)
+        order__date_start__gte=date_start - timedelta(days=1),
+        order__date_end__lte=date_end + timedelta(days=1)
     ):
         if not is_correct_timerange(
-            start_1=order.date_start,
-            end_1=order.date_end,
+            start_1=obj.order.date_start,
+            end_1=obj.order.date_end,
             start_2=date_start,
             end_2=date_end
         ):
+            print(repr(obj))
             return False
 
     return True
 
 
-def get_inline_objs_id(pattern: str, data: dict[str, str]) -> list:
+def get_inline_objs_id(pattern: str, data: dict[str, str]) -> list[int]:
     res = []
     for key, val in data.items():
-        if re.match(pattern, key):
-            if val != '':
-                res.append(val)
+        if re.match(pattern, key) and val != '':
+            res.append(int(val))
 
     return res
