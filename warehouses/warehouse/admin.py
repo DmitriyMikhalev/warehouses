@@ -2,10 +2,10 @@ from django.contrib import admin
 from django.contrib.admin import ModelAdmin, TabularInline
 from django.contrib.admin.actions import delete_selected
 
-from .forms import (OrderForm, ProductTransitInlineForm,
-                    ProductWarehouseInlineForm, VehicleTransitInlineForm)
+from .forms import (ProductTransitInlineForm, ProductWarehouseInlineForm,
+                    VehicleTransitInlineForm)
 from .models import (Order, Owner, Product, ProductTransit, ProductWarehouse,
-                     Shop, Transit, Vehicle, VehicleTransit, Warehouse)
+                     Shop, Transit, Vehicle, VehicleTransit, Warehouse, ProductOrder)
 
 delete_selected.short_description = 'Удалить'
 
@@ -67,7 +67,6 @@ class ProductWarehouseInline(DefaultInline):
 
 
 class VehicleTransitInline(DefaultInline):
-    # прикрутить проверку, что машина свободна (машины)
     model = VehicleTransit
     min_num = 1
     can_delete = True
@@ -85,6 +84,14 @@ class VehicleInline(DefaultInline):
 class WarehouseInline(DefaultInline):
     model = Warehouse
     readonly_fields = ('id', 'max_capacity')
+
+
+class ProductOrderInline(DefaultInline):
+    model = ProductOrder
+    can_delete = True
+    min_num = 1
+    def get_max_num(self, request, obj=None):
+        return Product.objects.count()
 
 
 class OrderInline(DefaultInline):
@@ -113,26 +120,33 @@ class OrderAdmin(ModelAdminListPerPage20):
         'accepted',
         'date_start',
         'date_end',
-        'warehouse',
-        'vehicle'
+        'warehouse'
     )
     search_fields = ('date_start', 'date_end',)
-    list_filter = ('warehouse', 'vehicle', 'accepted')
+    list_filter = ('warehouse', 'accepted')
     date_hierarchy = 'date_start'
-    list_display_links = None
+    list_display_links = ('accepted',)
     actions = ('accept_order',)
-    form = OrderForm
-
+    inlines = (ProductOrderInline,)
+    # добавить проверку, что удаляемое значение - осуществлено
     @admin.action(description='Осуществлено')
     def accept_order(self, request, queryset):
+        # Добавить изменение содержимого склада
         for order in queryset.filter(accepted=False):
             order.accepted = True
             order.save()
 
+    def get_readonly_fields(self, request, obj=None):
+        return ('accepted',) if obj is None else ()
 
-class ShopInline(ReadOnlyInlineMixin, DefaultInline):
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+class ShopInline(DefaultInline):
     model = Shop
     show_change_link = True
+    can_delete = True
 
 
 @admin.register(Owner)
@@ -161,10 +175,10 @@ class TransitAdmin(ModelAdminListPerPage20):
     search_fields = ('date_start', 'date_end')
     readonly_fields = ('accepted',)
     date_hierarchy = 'date_start'
-    inlines = (ProductTransitInline, VehicleTransitInline)
-
-    def gets_readonly_fields(self, request, obj=None):
-        return ('accepted',) if obj is None else ()
+    inlines = (
+        ProductTransitInline,
+        VehicleTransitInline,
+    )
 
     def has_change_permission(self, request, obj=None):
         return False

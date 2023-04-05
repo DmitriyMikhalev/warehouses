@@ -67,7 +67,8 @@ VEHICLE_TRANSIT_TABLE_CMD = """
         transit_id INTEGER NOT NULL,
         vehicle_id INTEGER NOT NULL,
         FOREIGN KEY (transit_id) REFERENCES transit (id) ON DELETE CASCADE,
-        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE
+        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE,
+        UNIQUE(transit_id, vehicle_id)
     );
 """
 
@@ -79,6 +80,7 @@ PRODUCT_TRANSIT_TABLE_CMD = """
         payload SMALLINT NOT NULL,
         FOREIGN KEY (transit_id) REFERENCES transit (id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
+        UNIQUE(transit_id, product_id),
         CHECK(payload > 0)
     );
 """
@@ -88,13 +90,11 @@ ORDER_TABLE_CMD = """
         id SERIAL PRIMARY KEY,
         shop_id INTEGER NOT NULL,
         warehouse_id INTEGER NOT NULL,
-        vehicle_id INTEGER NOT NULL,
         date_start TIMESTAMPTZ NOT NULL,
         date_end TIMESTAMPTZ NOT NULL,
         accepted BOOLEAN NOT NULL DEFAULT FALSE,
         FOREIGN KEY (shop_id) REFERENCES shop (id) ON DELETE CASCADE,
         FOREIGN KEY (warehouse_id) REFERENCES warehouse (id) ON DELETE CASCADE,
-        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE,
         CHECK(date_end > date_start)
     );
 """
@@ -107,6 +107,7 @@ PRODUCT_ORDER_TABLE_CMD = """
         payload SMALLINT NOT NULL,
         FOREIGN KEY (order_id) REFERENCES order_table (id) ON DELETE CASCADE,
         FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE CASCADE,
+        UNIQUE(order_id, product_id),
         CHECK(payload > 0)
     );
 """
@@ -124,6 +125,17 @@ PRODUCT_WAREHOUSE_CMD = """
     )
 """
 
+VEHICLE_ORDER_TABLE_CMD = """
+    CREATE TABLE IF NOT EXISTS vehicle_order(
+        id SERIAL PRIMARY KEY,
+        order_id INTEGER NOT NULL,
+        vehicle_id INTEGER NOT NULL,
+        FOREIGN KEY (order_id) REFERENCES order_table (id) ON DELETE CASCADE,
+        FOREIGN KEY (vehicle_id) REFERENCES vehicle (id) ON DELETE CASCADE,
+        UNIQUE(order_id, vehicle_id)
+    );
+"""
+
 PRODUCT_NAME_INDEX_CMD = """
     CREATE UNIQUE INDEX IF NOT EXISTS product_article_index ON product (
         name,
@@ -138,10 +150,12 @@ CREATE_TABLES_CMDS = [
     SHOP_TABLE_CMD,
     PRODUCT_TABLE_CMD,
     ORDER_TABLE_CMD,
+    PRODUCT_ORDER_TABLE_CMD,
     TRANSIT_TABLE_CMD,
     VEHICLE_TRANSIT_TABLE_CMD,
     PRODUCT_TRANSIT_TABLE_CMD,
-    PRODUCT_WAREHOUSE_CMD
+    PRODUCT_WAREHOUSE_CMD,
+    VEHICLE_ORDER_TABLE_CMD
 ]
 
 CREATE_INDEXES_CMDS = [

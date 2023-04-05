@@ -56,12 +56,6 @@ class Order(Model):
         to='Shop',
         verbose_name='Магазин'
     )
-    vehicle = ForeignKey(
-        on_delete=CASCADE,
-        related_name='orders',
-        to='Vehicle',
-        verbose_name='Машина'
-    )
     warehouse = ForeignKey(
         on_delete=CASCADE,
         related_name='orders',
@@ -140,7 +134,7 @@ class Product(Model):
         constraints = (
             UniqueConstraint(
                 fields=('name', 'article_number'),
-                name='product_article_index'
+                name='name_article_unique'
             ),
         )
         db_table = 'product'
@@ -176,6 +170,12 @@ class ProductOrder(Model):
     )
 
     class Meta:
+        constraints = (
+            UniqueConstraint(
+                fields=('order', 'product'),
+                name='product_order_unique'
+            ),
+        )
         db_table = 'product_order'
         managed = False
         ordering = ('id',)
@@ -186,7 +186,7 @@ class ProductOrder(Model):
         return ''
 
     def __repr__(self):
-        return f'Состав поставки {self.transit.date_start.date()}'
+        return f'Состав заказа {self.order.date_start.date()}'
 
 
 class ProductTransit(Model):
@@ -208,6 +208,12 @@ class ProductTransit(Model):
     )
 
     class Meta:
+        constraints = (
+            UniqueConstraint(
+                fields=('product', 'transit'),
+                name='product_transit_unique'
+            ),
+        )
         db_table = 'product_transit'
         managed = False
         ordering = ('id',)
@@ -240,6 +246,12 @@ class ProductWarehouse(Model):
     )
 
     class Meta:
+        constraints = (
+            UniqueConstraint(
+                fields=('product', 'warehouse'),
+                name='product_warehouse_unique'
+            ),
+        )
         db_table = 'product_warehouse'
         managed = False
         ordering = ('id',)
@@ -340,7 +352,7 @@ class Transit(Model):
         return ''
 
     def __repr__(self):
-        return f'Поставка на {self.warehouse}: {self.date_start.date()}'
+        return f'Поставка #{self.id}'
 
 
 class Vehicle(Model):
@@ -381,6 +393,40 @@ class Vehicle(Model):
         return f'#{self.id} {self.brand}'
 
 
+class VehicleOrder(Model):
+    order = ForeignKey(
+        on_delete=CASCADE,
+        related_name='vehicle_order',
+        to='Transit',
+        verbose_name='Заказ'
+    )
+    vehicle = ForeignKey(
+        on_delete=CASCADE,
+        related_name='vehicle_order',
+        to='Vehicle',
+        verbose_name='Машина'
+    )
+
+    class Meta:
+        constraints = (
+            UniqueConstraint(
+                fields=('order', 'vehicle'),
+                name='order_vehicle_unique'
+            ),
+        )
+        db_table = 'vehicle_order'
+        managed = False
+        ordering = ('id',)
+        verbose_name = 'Машина, везущая заказ'
+        verbose_name_plural = 'Машины, везущие заказ'
+
+    def __str__(self):
+        return ''
+
+    def __repr__(self):
+        return f'Машина в заказе {self.order.id}'
+
+
 class VehicleTransit(Model):
     transit = ForeignKey(
         on_delete=CASCADE,
@@ -396,6 +442,12 @@ class VehicleTransit(Model):
     )
 
     class Meta:
+        constraints = (
+            UniqueConstraint(
+                fields=('transit', 'vehicle'),
+                name='transit_vehicle_unique'
+            ),
+        )
         db_table = 'vehicle_transit'
         managed = False
         ordering = ('id',)

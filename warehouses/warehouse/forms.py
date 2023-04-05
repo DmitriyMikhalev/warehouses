@@ -1,21 +1,15 @@
 from django.db.models import Sum
 from datetime import datetime, timezone
 from django.forms import ModelForm, ValidationError
-
+from django.forms.models import BaseInlineFormSet
 from .models import Order, ProductTransit, ProductWarehouse, VehicleTransit, Vehicle, Transit
 from .utils import get_inline_sum, get_now_datetime, is_vehicle_available, get_inline_objs_id
 
 
-class OrderForm(ModelForm):
+class ProductOrderInlineForm(ModelForm):
+    # прикрутить проверку на продукт
     class Meta:
-        fields = (
-            'date_start',
-            'date_end',
-            'shop',
-            'vehicle',
-            'warehouse'
-        )
-        model = Order
+        fields = ()
 
 
 class ProductWarehouseInlineForm(ModelForm):
@@ -45,7 +39,7 @@ class ProductTransitInlineForm(ModelForm):
     def clean(self):
         """при создании поставки проверка инлайна"""
         cleaned_data = super().clean()
-        print(cleaned_data)
+        # TODO: fix validation
         warehouse = cleaned_data['transit'].warehouse
         new_payload = get_inline_sum(
             pattern=r'^product_transit-[0-9]+-payload$',

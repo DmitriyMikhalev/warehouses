@@ -37,7 +37,7 @@ def is_vehicle_available(vehicle, date_start, date_end):
             end_2=date_end
         ):
             return False
-    print('ne bilo')
+
     for order in Order.objects.filter(
         vehicle=vehicle,
         date_start__gte=date_start - timedelta(days=1),
@@ -58,6 +58,7 @@ def get_inline_objs_id(pattern: str, data: dict[str, str]) -> list:
     res = []
     for key, val in data.items():
         if re.match(pattern, key):
-            res.append(val)
+            if val != '':
+                res.append(val)
 
     return res
