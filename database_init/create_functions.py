@@ -74,8 +74,8 @@ QUERY_4_CMD = """
             id INTEGER,
             name VARCHAR,
             address VARCHAR,
-            date_start TIMESTAMP,
-            date_end TIMESTAMP
+            date_start TIMESTAMPTZ,
+            date_end TIMESTAMPTZ
         )
     AS $$
     BEGIN
@@ -164,7 +164,7 @@ QUERY_7_CMD = """
             id INTEGER,
             brand VARCHAR,
             max_capacity SMALLINT,
-            date_start TIMESTAMP
+            date_start TIMESTAMPTZ
         )
     AS $$
     BEGIN
@@ -173,14 +173,16 @@ QUERY_7_CMD = """
                 DISTINCT vehicle.id,
                 vehicle.brand,
                 vehicle.max_capacity,
-                product_shop_order.date_start
+                order_table.date_start
             FROM
                 vehicle
             INNER JOIN
-                product_shop_order ON product_shop_order.vehicle_id = vehicle.id
+                vehicle_order ON vehicle.id = vehicle_order.vehicle_id
+            INNER JOIN
+                order_table ON order_table.id = vehicle_order.order_id
             WHERE
-                EXTRACT(HOUR FROM product_shop_order.date_start) >= 16 AND
-                product_shop_order.date_start::date = $1
+                EXTRACT(HOUR FROM order_table.date_start) >= 16 AND
+                order_table.date_start::date = $1
             ORDER BY
                 vehicle.max_capacity DESC;
     END; $$
@@ -189,7 +191,7 @@ QUERY_7_CMD = """
 """
 
 QUERY_8_CMD = """
-    CREATE OR REPLACE FUNCTION query_8 (DATE)
+    CREATE OR REPLACE FUNCTION query_8(DATE)
         RETURNS TABLE (
             id INTEGER,
             address VARCHAR
@@ -203,9 +205,9 @@ QUERY_8_CMD = """
             FROM
                 warehouse
             INNER JOIN
-                product_shop_order ON product_shop_order.warehouse_id = warehouse.id
+                order_table ON order_table.warehouse_id = warehouse.id
             WHERE
-                product_shop_order.date_start::date = $1
+                order_table.date_start::date = $1
             GROUP BY
                 warehouse.id
             HAVING
@@ -213,11 +215,11 @@ QUERY_8_CMD = """
                     SELECT
                         COUNT(*) AS cnt
                     FROM
-                        product_shop_order
+                        order_table
                     WHERE
-                        product_shop_order.date_start::date = $1
+                        order_table.date_start::date = $1
                     GROUP BY
-                        product_shop_order.warehouse_id
+                        order_table.warehouse_id
                     ORDER BY
                         cnt ASC
                     LIMIT 1
