@@ -417,8 +417,8 @@ class VehicleOrder(Model):
         db_table = 'vehicle_order'
         managed = False
         ordering = ('id',)
-        verbose_name = 'Машина, везущая заказ'
-        verbose_name_plural = 'Машины, везущие заказ'
+        verbose_name = 'Машина в заказке'
+        verbose_name_plural = 'Машины в заказе'
 
     def __str__(self):
         return ''
@@ -451,8 +451,8 @@ class VehicleTransit(Model):
         db_table = 'vehicle_transit'
         managed = False
         ordering = ('id',)
-        verbose_name = 'Поставка машиной'
-        verbose_name_plural = 'Поставки машиной'
+        verbose_name = 'Машина в поставке'
+        verbose_name_plural = 'Машины в поставке'
 
     def __str__(self):
         return ''

@@ -1,11 +1,13 @@
 from django.contrib import admin
 from django.contrib.admin import ModelAdmin, TabularInline
 from django.contrib.admin.actions import delete_selected
+from django.db.models import Sum
 
-from .forms import (ProductTransitInlineForm, ProductWarehouseInlineForm, TransitForm,
-                    VehicleTransitInlineForm)
-from .models import (Order, Owner, Product, ProductTransit, ProductWarehouse,
-                     Shop, Transit, Vehicle, VehicleTransit, Warehouse, ProductOrder)
+from .forms import (ProductTransitInlineForm, ProductWarehouseInlineForm,
+                    ShopForm, TransitForm, VehicleTransitInlineForm)
+from .models import (Order, Owner, Product, ProductOrder, ProductTransit,
+                     ProductWarehouse, Shop, Transit, Vehicle, VehicleTransit,
+                     Warehouse)
 
 delete_selected.short_description = 'Удалить'
 
@@ -58,12 +60,7 @@ class ProductWarehouseInline(DefaultInline):
         return ('product', 'payload') if obj is not None else ()
 
     def get_max_num(self, request, obj=None):
-        """
-        If warehouse exists, shows immutable products in amount current
-        warehouse has products, else max count of products None that means
-        unlimited.
-        """
-        return obj.product_warehouse.count() if obj is not None else None
+        return Product.objects.count() if obj is None else 0
 
 
 class VehicleTransitInline(DefaultInline):
@@ -78,12 +75,25 @@ class VehicleTransitInline(DefaultInline):
 
 class VehicleInline(DefaultInline):
     model = Vehicle
-    can_delete = True
+    show_change_link = True
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 class WarehouseInline(DefaultInline):
     model = Warehouse
     readonly_fields = ('id', 'max_capacity')
+    show_change_link = True
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 class ProductOrderInline(DefaultInline):
@@ -96,12 +106,31 @@ class ProductOrderInline(DefaultInline):
 
 
 class OrderInline(DefaultInline):
-    verbose_name_plural = 'Неосуществленные заказы магазина'
+    verbose_name_plural = 'Неосуществленные поставки в магазин'
     model = Order
     fields = (
         'date_start',
         'date_end',
         'warehouse'
+    )
+    show_change_link = True
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(accepted=False)
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+class TransitInline(DefaultInline):
+    verbose_name_plural = 'Неосуществленные поставки на склад'
+    model = Transit
+    fields = (
+        'date_start',
+        'date_end'
     )
     show_change_link = True
 
@@ -147,7 +176,12 @@ class OrderAdmin(ModelAdminListPerPage20):
 class ShopInline(DefaultInline):
     model = Shop
     show_change_link = True
-    can_delete = True
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_add_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Owner)
@@ -160,13 +194,38 @@ class OwnerAdmin(ModelAdminListPerPage20):
 
 @admin.register(Warehouse)
 class WarehouseAdmin(ModelAdminListPerPage20):
-    list_display = ('id', 'address', 'name', 'max_capacity', 'owner')
+    list_display = (
+        'id',
+        'address',
+        'name',
+        'total_payload',
+        'max_capacity',
+        'owner',
+        'unaccepted_transits_count'
+    )
     list_display_links = ('address',)
     search_fields = ('address', 'name', 'email', 'owner')
-    inlines = (ProductWarehouseInline,)
+
+    def get_inlines(self, request, obj=None):
+        if obj is not None:
+            return (ProductWarehouseInline, TransitInline)
+
+        return (ProductWarehouseInline,)
+
+    def total_payload(self, obj):
+        return obj.product_warehouse.all().aggregate(
+            sum=Sum('payload')
+        ).get('sum') or 0
 
     def get_readonly_fields(self, request, obj=None):
         return ('max_capacity',) if obj is not None else ()
+
+    def unaccepted_transits_count(self, obj):
+        return Transit.objects.filter(warehouse=obj, accepted=False).count()
+
+    unaccepted_transits_count.short_description = 'Ожидает поставок'
+
+    total_payload.short_description = 'Текущая загрузка (т)'
 
 
 @admin.register(Transit)
@@ -199,10 +258,27 @@ class VehicleAdmin(ModelAdminListPerPage20):
     list_display_links = ('brand',)
     search_fields = ('brand', 'max_capacity', 'article_number', 'vin', 'owner')
 
+    def get_readonly_fields(self, request, obj=None):
+        return ('max_capacity',) if obj is not None else ()
+
 
 @admin.register(Shop)
 class ShopAdmin(ModelAdminListPerPage20):
-    list_display = ('id', 'address', 'owner')
-    list_display_links = ('address',)
+    list_display = (
+        'id',
+        'name',
+        'address',
+        'owner',
+        'unaccepted_orders_count'
+    )
+    list_display_links = ('name',)
     search_fields = ('owner', 'address')
-    inlines = (OrderInline,)
+    form = ShopForm
+
+    def unaccepted_orders_count(self, obj):
+        return Order.objects.filter(shop=obj, accepted=False).count()
+
+    def get_inlines(self, request, obj=None):
+        return (OrderInline,) if obj is not None else ()
+
+    unaccepted_orders_count.short_description = 'Ожидает поставок'

@@ -1,9 +1,10 @@
 from django.db.models import Sum
 from django.forms import ModelForm, ValidationError
 
-from .models import ProductTransit, ProductWarehouse, Transit, VehicleTransit
+from .models import (ProductTransit, ProductWarehouse, Shop, Transit,
+                     VehicleTransit)
 from .utils import (get_datetime_deleted_timezone, get_inline_objs_id,
-                    get_inline_sum, is_vehicle_available)
+                    get_inline_sum, is_vehicle_available, has_inline_duplicates)
 
 
 class TransitForm(ModelForm):
@@ -25,7 +26,15 @@ class ProductWarehouseInlineForm(ModelForm):
     def clean(self):
         """при создании склада проверка инлайна"""
         cleaned_data = super().clean()
-        warehouse = cleaned_data['warehouse']
+        warehouse = cleaned_data.get('warehouse')
+        if has_inline_duplicates(
+            pattern=r'^product_warehouse-[0-9]+-product$',
+            data=self.data
+        ):
+            raise ValidationError(
+                message='Запрещены дубликаты товаров.'
+            )
+
         new_payload = get_inline_sum(
             pattern=r'^product_warehouse-[0-9]+-payload$',
             data=self.data
@@ -48,12 +57,10 @@ class ProductTransitInlineForm(ModelForm):
     def clean(self):
         """при создании поставки проверка инлайна"""
         cleaned_data = super().clean()
-        product_ids = get_inline_objs_id(
+        if has_inline_duplicates(
             pattern=r'^product_transit-[0-9]+-product$',
             data=self.data
-        )
-
-        if len(set(product_ids)) != len(product_ids):
+        ):
             raise ValidationError(
                 message='Запрещены дубликаты товаров.'
             )
@@ -83,12 +90,11 @@ class ProductTransitInlineForm(ModelForm):
 class VehicleTransitInlineForm(ModelForm):
     def clean(self):
         cleaned_data = super().clean()
-        vehicle_ids = get_inline_objs_id(
+
+        if has_inline_duplicates(
             pattern=r'^vehicle_transit-[0-9]+-vehicle$',
             data=self.data
-        )
-
-        if len(set(vehicle_ids)) != len(vehicle_ids):
+        ):
             raise ValidationError('Запрещено повторно выбирать одну машину.')
 
         return cleaned_data
@@ -121,3 +127,18 @@ class VehicleTransitInlineForm(ModelForm):
     class Meta:
         fields = ('vehicle',)
         model = VehicleTransit
+
+
+class ShopForm(ModelForm):
+    def clean_name(self):
+        name = self.cleaned_data.get('name')
+        if Shop.objects.filter(name=name).exists():
+            raise ValidationError(
+                message='Магазин с таким названием уже существует.'
+            )
+
+        return name
+
+    class Meta:
+        fields = ('address', 'name', 'owner')
+        model = Shop

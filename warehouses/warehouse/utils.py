@@ -74,3 +74,12 @@ def get_inline_objs_id(pattern: str, data: dict[str, str]) -> list[int]:
             res.append(int(val))
 
     return res
+
+
+def has_inline_duplicates(pattern: str, data: dict[str, str]):
+    obj_ids = get_inline_objs_id(
+            pattern=pattern,
+            data=data
+        )
+
+    return len(set(obj_ids)) != len(obj_ids)
