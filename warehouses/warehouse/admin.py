@@ -106,7 +106,7 @@ class ProductOrderInline(DefaultInline):
 
 
 class OrderInline(DefaultInline):
-    verbose_name_plural = 'Неосуществленные поставки в магазин'
+    verbose_name_plural = 'Ожидаемые поставки в магазин'
     model = Order
     fields = (
         'date_start',
@@ -126,7 +126,7 @@ class OrderInline(DefaultInline):
 
 
 class TransitInline(DefaultInline):
-    verbose_name_plural = 'Неосуществленные поставки на склад'
+    verbose_name_plural = 'Ожидаемые поставки на склад'
     model = Transit
     fields = (
         'date_start',
@@ -235,11 +235,8 @@ class TransitAdmin(ModelAdminListPerPage20):
     search_fields = ('date_start', 'date_end')
     readonly_fields = ('accepted',)
     date_hierarchy = 'date_start'
-    form = TransitForm
-    inlines = (
-        ProductTransitInline,
-        VehicleTransitInline,
-    )
+    # form = TransitForm
+    inlines = (ProductTransitInline, VehicleTransitInline)
 
     def has_change_permission(self, request, obj=None):
         return False

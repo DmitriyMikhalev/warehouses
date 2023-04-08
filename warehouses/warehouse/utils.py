@@ -19,13 +19,11 @@ def get_now_datetime():
     return dt.now(tz=timezone(offset=timedelta(hours=TIMEZONE_OFFSET)))
 
 
-def get_datetime_deleted_timezone(date, time):
+def get_datetime_local_timezone(date, time):
     return dt.strptime(
             date + ' ' + time,
             '%d.%m.%Y %H:%M:%S'
-        ).replace(tzinfo=timezone.utc) - timedelta(
-            hours=settings.TIMEZONE_OFFSET
-        )
+        ).replace(tzinfo=ZoneInfo(key=settings.TIME_ZONE))
 
 
 def is_correct_timerange(start_1, end_1, start_2, end_2) -> bool:
@@ -38,8 +36,9 @@ def is_vehicle_available(vehicle, date_start, date_end):
 
     for obj in VehicleTransit.objects.filter(
         vehicle=vehicle,
-        transit__date_start__gte=date_start - timedelta(days=1),
-        transit__date_end__lte=date_end + timedelta(days=1)
+        transit__date_start__lte=date_end,
+        transit__date_end__gte=date_start,
+        transit__accepted=False
     ):
         if not is_correct_timerange(
             start_1=obj.transit.date_start,
@@ -52,8 +51,9 @@ def is_vehicle_available(vehicle, date_start, date_end):
 
     for obj in VehicleOrder.objects.filter(
         vehicle=vehicle,
-        order__date_start__gte=date_start - timedelta(days=1),
-        order__date_end__lte=date_end + timedelta(days=1)
+        order__date_start__lte=date_end,
+        order__date_end__gte=date_start,
+        order__accepted=False
     ):
         if not is_correct_timerange(
             start_1=obj.order.date_start,
@@ -61,7 +61,6 @@ def is_vehicle_available(vehicle, date_start, date_end):
             start_2=date_start,
             end_2=date_end
         ):
-            print(repr(obj))
             return False
 
     return True

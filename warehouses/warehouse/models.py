@@ -397,7 +397,7 @@ class VehicleOrder(Model):
     order = ForeignKey(
         on_delete=CASCADE,
         related_name='vehicle_order',
-        to='Transit',
+        to='Order',
         verbose_name='Заказ'
     )
     vehicle = ForeignKey(

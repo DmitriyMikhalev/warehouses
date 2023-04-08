@@ -2,13 +2,14 @@ from django.db.models import Sum
 from django.forms import ModelForm, ValidationError
 
 from .models import (ProductTransit, ProductWarehouse, Shop, Transit,
-                     VehicleTransit)
-from .utils import (get_datetime_deleted_timezone, get_inline_objs_id,
-                    get_inline_sum, is_vehicle_available, has_inline_duplicates)
+                     VehicleTransit, Warehouse)
+from .utils import (get_datetime_local_timezone, get_inline_sum,
+                    has_inline_duplicates, is_vehicle_available)
 
 
 class TransitForm(ModelForm):
     def clean(self):
+        print(self.data)
         return super().clean()
 
     class Meta:
@@ -27,6 +28,7 @@ class ProductWarehouseInlineForm(ModelForm):
         """при создании склада проверка инлайна"""
         cleaned_data = super().clean()
         warehouse = cleaned_data.get('warehouse')
+
         if has_inline_duplicates(
             pattern=r'^product_warehouse-[0-9]+-product$',
             data=self.data
@@ -57,6 +59,7 @@ class ProductTransitInlineForm(ModelForm):
     def clean(self):
         """при создании поставки проверка инлайна"""
         cleaned_data = super().clean()
+
         if has_inline_duplicates(
             pattern=r'^product_transit-[0-9]+-product$',
             data=self.data
@@ -65,20 +68,21 @@ class ProductTransitInlineForm(ModelForm):
                 message='Запрещены дубликаты товаров.'
             )
 
-        warehouse = cleaned_data.get('transit').warehouse
-        new_payload = get_inline_sum(
-            pattern=r'^product_transit-[0-9]+-payload$',
-            data=self.data
-        )
-        current_payload = ProductWarehouse.objects.filter(
-            warehouse=warehouse
-        ).aggregate(sum=Sum('payload')).get('sum') or 0
-
-        if (val := current_payload + new_payload) > warehouse.max_capacity:
-            raise ValidationError(
-                message='Склад не сможет вместить такое количество товаров ('
-                        + f'{val} > {warehouse.max_capacity}).'
+        if (warehouse_id := self.data.get('warehouse')) != '':
+            warehouse = Warehouse.objects.get(pk=warehouse_id)
+            new_payload = get_inline_sum(
+                pattern=r'^product_transit-[0-9]+-payload$',
+                data=self.data
             )
+            current_payload = ProductWarehouse.objects.filter(
+                warehouse=warehouse
+            ).aggregate(sum=Sum('payload')).get('sum') or 0
+
+            if (val := current_payload + new_payload) > warehouse.max_capacity:
+                raise ValidationError(
+                    message='Склад не сможет вместить такое количество товаров'
+                            + f' ({val} > {warehouse.max_capacity}).'
+                )
 
         return cleaned_data
 
@@ -106,21 +110,22 @@ class VehicleTransitInlineForm(ModelForm):
         date_end = self.data.get('date_end_0')
         time_end = self.data.get('date_end_1')
 
-        date_start = get_datetime_deleted_timezone(
-            date=date_start,
-            time=time_start
-        )
-        date_end = get_datetime_deleted_timezone(
-            date=date_end,
-            time=time_end
-        )
+        if all(i for i in (date_start, time_start, date_end, time_end)):
+            date_start = get_datetime_local_timezone(
+                date=date_start,
+                time=time_start
+            )
+            date_end = get_datetime_local_timezone(
+                date=date_end,
+                time=time_end
+            )
 
-        if not is_vehicle_available(
-            vehicle=vehicle,
-            date_start=date_start,
-            date_end=date_end
-        ):
-            raise ValidationError(message='Машина занята в это время.')
+            if not is_vehicle_available(
+                vehicle=vehicle,
+                date_start=date_start,
+                date_end=date_end
+            ):
+                raise ValidationError(message='Машина занята в это время.')
 
         return vehicle
 
