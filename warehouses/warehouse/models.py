@@ -186,7 +186,7 @@ class ProductOrder(Model):
         return ''
 
     def __repr__(self):
-        return f'Состав заказа {self.order.date_start.date()}'
+        return f'Состав заказа #{self.order.id} {self.order.date_start.date()}'
 
 
 class ProductTransit(Model):
@@ -236,7 +236,7 @@ class ProductWarehouse(Model):
         on_delete=CASCADE,
         related_name='product_warehouse',
         to='Product',
-        verbose_name='Товар'
+        verbose_name='Товар',
     )
     warehouse = ForeignKey(
         on_delete=CASCADE,

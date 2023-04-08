@@ -1,13 +1,15 @@
 from django.contrib import admin
 from django.contrib.admin import ModelAdmin, TabularInline
 from django.contrib.admin.actions import delete_selected
-from django.db.models import Sum
+from django.db.models import Sum, F
+from .utils import get_diff_order, get_diff_transit
 
-from .forms import (ProductTransitInlineForm, ProductWarehouseInlineForm,
-                    ShopForm, TransitForm, VehicleTransitInlineForm)
+from .forms import (ProductOrderInlineForm, ProductTransitInlineForm,
+                    ProductWarehouseInlineForm, ShopForm,
+                    VehicleOrderInlineForm, VehicleTransitInlineForm)
 from .models import (Order, Owner, Product, ProductOrder, ProductTransit,
-                     ProductWarehouse, Shop, Transit, Vehicle, VehicleTransit,
-                     Warehouse)
+                     ProductWarehouse, Shop, Transit, Vehicle, VehicleOrder,
+                     VehicleTransit, Warehouse)
 
 delete_selected.short_description = 'Удалить'
 
@@ -99,6 +101,7 @@ class WarehouseInline(DefaultInline):
 class ProductOrderInline(DefaultInline):
     model = ProductOrder
     can_delete = True
+    form = ProductOrderInlineForm
     min_num = 1
 
     def get_max_num(self, request, obj=None):
@@ -144,30 +147,50 @@ class TransitInline(DefaultInline):
         return False
 
 
+class VehicleOrderInline(DefaultInline):
+    model = VehicleOrder
+    min_num = 1
+    can_delete = True
+    form = VehicleOrderInlineForm
+
+    def get_max_num(self, request, obj=None):
+        return Vehicle.objects.count()
+
+
 @admin.register(Order)
 class OrderAdmin(ModelAdminListPerPage20):
     list_display = (
+        'id',
         'accepted',
         'date_start',
         'date_end',
+        'shop',
         'warehouse'
     )
     search_fields = ('date_start', 'date_end',)
-    list_filter = ('warehouse', 'accepted')
+    list_filter = ('warehouse', 'accepted', 'date_start', 'date_end')
     date_hierarchy = 'date_start'
-    list_display_links = ('accepted',)
     actions = ('accept_order',)
-    inlines = (ProductOrderInline,)
-    # добавить проверку, что удаляемое значение - осуществлено
+    inlines = (ProductOrderInline, VehicleOrderInline)
+
     @admin.action(description='Осуществлено')
     def accept_order(self, request, queryset):
-        # Добавить изменение содержимого склада
         for order in queryset.filter(accepted=False):
+            for product, diff in get_diff_order(order).items():
+                if (obj := ProductWarehouse.objects.get(
+                        warehouse=order.warehouse,
+                        product=product
+                   )).payload == diff:
+                    obj.delete()
+                else:
+                    obj.payload = obj.payload - diff
+                    obj.save()
+
             order.accepted = True
             order.save()
 
     def get_readonly_fields(self, request, obj=None):
-        return ('accepted',) if obj is None else ()
+        return ('accepted', 'id') if obj is None else ('id',)
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -205,6 +228,7 @@ class WarehouseAdmin(ModelAdminListPerPage20):
     )
     list_display_links = ('address',)
     search_fields = ('address', 'name', 'email', 'owner')
+    list_filter = ('owner',)
 
     def get_inlines(self, request, obj=None):
         if obj is not None:
@@ -230,13 +254,33 @@ class WarehouseAdmin(ModelAdminListPerPage20):
 
 @admin.register(Transit)
 class TransitAdmin(ModelAdminListPerPage20):
-    list_display = ('accepted', 'date_start', 'date_end', 'warehouse')
+    list_display = ('id', 'accepted', 'date_start', 'date_end', 'warehouse')
     list_filter = ('date_start', 'date_end', 'accepted')
     search_fields = ('date_start', 'date_end')
-    readonly_fields = ('accepted',)
+    readonly_fields = ('accepted', 'id')
+    actions = ('accept_transit',)
     date_hierarchy = 'date_start'
-    # form = TransitForm
     inlines = (ProductTransitInline, VehicleTransitInline)
+
+    @admin.action(description='Осуществлено')
+    def accept_transit(self, request, queryset):
+        for transit in queryset.filter(accepted=False):
+            for product, diff in get_diff_transit(transit).items():
+                if (obj := ProductWarehouse.objects.filter(
+                    warehouse=transit.warehouse,
+                    product=product
+                ).first()) is not None:
+                    obj.payload = obj.payload + diff
+                    obj.save()
+                else:
+                    ProductWarehouse.objects.create(
+                        product=product,
+                        warehouse=transit.warehouse,
+                        payload=diff
+                    )
+
+            transit.accepted = True
+            transit.save()
 
     def has_change_permission(self, request, obj=None):
         return False
@@ -253,7 +297,8 @@ class ProductAdmin(ModelAdminListPerPage20):
 class VehicleAdmin(ModelAdminListPerPage20):
     list_display = ('id', 'brand', 'max_capacity', 'owner', 'vin')
     list_display_links = ('brand',)
-    search_fields = ('brand', 'max_capacity', 'article_number', 'vin', 'owner')
+    search_fields = ('max_capacity', 'vin')
+    list_filter = ('owner', 'brand')
 
     def get_readonly_fields(self, request, obj=None):
         return ('max_capacity',) if obj is not None else ()
@@ -270,6 +315,7 @@ class ShopAdmin(ModelAdminListPerPage20):
     )
     list_display_links = ('name',)
     search_fields = ('owner', 'address')
+    list_filter = ('owner', )
     form = ShopForm
 
     def unaccepted_orders_count(self, obj):

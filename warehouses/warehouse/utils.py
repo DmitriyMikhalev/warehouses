@@ -1,7 +1,7 @@
 import re
 from zoneinfo import ZoneInfo
-from datetime import datetime as dt, timedelta, timezone
-from warehouses.settings import TIMEZONE_OFFSET
+from datetime import datetime as dt
+from django.db.models import Sum
 from django.apps import apps
 from django.conf import settings
 
@@ -16,7 +16,7 @@ def get_inline_sum(pattern: str, data: dict[str, str]) -> int:
 
 
 def get_now_datetime():
-    return dt.now(tz=timezone(offset=timedelta(hours=TIMEZONE_OFFSET)))
+    return dt.now(tz=ZoneInfo(key=settings.TIME_ZONE))
 
 
 def get_datetime_local_timezone(date, time):
@@ -82,3 +82,34 @@ def has_inline_duplicates(pattern: str, data: dict[str, str]):
         )
 
     return len(set(obj_ids)) != len(obj_ids)
+
+
+def get_product_payload_diff(warehouse, product, date_start) -> int:
+    ProductTransit = apps.get_model('warehouse', 'ProductTransit')
+    ProductOrder = apps.get_model('warehouse', 'ProductOrder')
+
+    negative_payload = ProductOrder.objects.filter(
+        order__accepted=False,
+        product=product,
+        order__warehouse=warehouse,
+        order__date_start__gte=get_now_datetime(),
+        order__date_end__lt=date_start
+    ).aggregate(sum=Sum('payload')).get('sum') or 0
+
+    positive_payload = ProductTransit.objects.filter(
+        transit__accepted=False,
+        product=product,
+        transit__warehouse=warehouse,
+        transit__date_start__gte=get_now_datetime(),
+        transit__date_end__lt=date_start,
+    ).aggregate(sum=Sum('payload')).get('sum') or 0
+
+    return positive_payload - negative_payload
+
+
+def get_diff_order(order) -> dict[int, int]:
+    return {obj.product: obj.payload for obj in order.product_order.all()}
+
+
+def get_diff_transit(transit) -> dict[int, int]:
+    return {obj.product: obj.payload for obj in transit.product_transit.all()}
