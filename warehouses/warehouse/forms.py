@@ -1,69 +1,49 @@
-from django.core.exceptions import NON_FIELD_ERRORS
 from django.db.models import Sum
 from django.forms import ModelForm, ValidationError
+from datetime import datetime
 
 from .models import (ProductOrder, ProductTransit, ProductWarehouse, Shop,
-                     VehicleOrder, VehicleTransit, Warehouse, Order)
+                     VehicleOrder, VehicleTransit, Warehouse, Product, Vehicle)
 from .utils import (get_datetime_local_timezone, get_inline_sum,
-                    get_product_payload_diff, has_inline_duplicates,
-                    is_vehicle_available)
-
-
-class ProductWarehouseInlineForm(ModelForm):
-    def clean(self):
-        """при создании склада проверка инлайна"""
-        cleaned_data = super().clean()
-
-        if (max_capacity := self.data.get('max_capacity')) != '':
-            max_capacity = int(max_capacity)
-            new_payload = get_inline_sum(
-                pattern=r'^product_warehouse-[0-9]+-payload$',
-                data=self.data
-            )
-
-            if new_payload > max_capacity:
-                raise ValidationError(
-                    message='Склад не сможет вместить такое количество товаров'
-                            + f' ({new_payload} > {max_capacity}).'
-                )
-
-        return cleaned_data
-
-    class Meta:
-        fields = ('product', 'payload')
-        model = ProductWarehouse
+                    get_product_payload_diff, is_vehicle_available)
 
 
 class ProductOrderInlineForm(ModelForm):
+    """Inline entity attached to ProductOrder model. Used in Order instance."""
     def clean_payload(self):
+        """
+        Custom validation while creating new order for required payload --
+        checks that count of this product will be in an associated warehouse at
+        chosen time.
+        """
         if self.data.get('warehouse') != '':
-            product = self.cleaned_data.get('product')
-            required_payload = self.cleaned_data.get('payload')
-            warehouse_id = self.data.get('warehouse')
+            product: Product = self.cleaned_data.get('product')
+            required_payload: int = self.cleaned_data.get('payload')
+            warehouse_id: int = self.data.get('warehouse')
             warehouse = Warehouse.objects.filter(pk=warehouse_id).first()
 
-            date_start = self.data.get('date_start_0')
-            time_start = self.data.get('date_start_1')
-            date_end = self.data.get('date_end_0')
-            time_end = self.data.get('date_end_1')
+            date_start: str = self.data.get('date_start_0')
+            time_start: str = self.data.get('date_start_1')
+            date_end: str = self.data.get('date_end_0')
+            time_end: str = self.data.get('date_end_1')
 
             if all(i for i in (date_start, time_start, date_end, time_end)):
-                date_start = get_datetime_local_timezone(
+                date_start: datetime = get_datetime_local_timezone(
                     date=date_start,
                     time=time_start
                 )
-                date_end = get_datetime_local_timezone(
+                date_end: datetime = get_datetime_local_timezone(
                     date=date_end,
                     time=time_end
                 )
-                diff = get_product_payload_diff(
-                    warehouse=warehouse,
+                diff: int = get_product_payload_diff(
+                    date_start=date_start,
                     product=product,
-                    date_start=date_start
+                    warehouse=warehouse
                 )
-                current_payload = ProductWarehouse.objects.filter(
-                    warehouse=warehouse,
-                    product=product
+                current_payload: int = ProductWarehouse.objects.filter(
+                    product=product,
+                    warehouse=warehouse
                 ).aggregate(sum=Sum('payload')).get('sum') or 0
 
                 if required_payload > (val := current_payload + diff):
@@ -80,17 +60,23 @@ class ProductOrderInlineForm(ModelForm):
 
 
 class ProductTransitInlineForm(ModelForm):
+    """
+    Inline entity attached to ProductTransit model. Used in Transit instance.
+    """
     def clean(self):
-        """при создании поставки проверка инлайна"""
+        """
+        Custom validation while creating new Transit -- checks if total new
+        payload is less or equals to warehouse capacity.
+        """
         cleaned_data = super().clean()
 
         if (warehouse_id := self.data.get('warehouse')) != '':
-            warehouse = Warehouse.objects.get(pk=warehouse_id)
-            new_payload = get_inline_sum(
-                pattern=r'^product_transit-[0-9]+-payload$',
-                data=self.data
+            warehouse: Warehouse = Warehouse.objects.get(pk=warehouse_id)
+            new_payload: int = get_inline_sum(
+                data=self.data,
+                pattern=r'^product_transit-[0-9]+-payload$'
             )
-            current_payload = ProductWarehouse.objects.filter(
+            current_payload: int = ProductWarehouse.objects.filter(
                 warehouse=warehouse
             ).aggregate(sum=Sum('payload')).get('sum') or 0
 
@@ -107,53 +93,46 @@ class ProductTransitInlineForm(ModelForm):
         model = ProductTransit
 
 
-class VehicleInlineBaseForm(ModelForm):
-    def clean_vehicle(self):
-        vehicle = self.cleaned_data.get('vehicle')
-        date_start = self.data.get('date_start_0')
-        time_start = self.data.get('date_start_1')
-        date_end = self.data.get('date_end_0')
-        time_end = self.data.get('date_end_1')
+class ProductWarehouseInlineForm(ModelForm):
+    """
+    Inline entity attached to ProductWarehouse model. Used in Warehouse
+    instance.
+    """
+    def clean(self):
+        """
+        Custom validation while creating new Warehouse -- checks if total new
+        payload is less or equals to warehouse capacity.
+        """
+        cleaned_data = super().clean()
 
-        if all(i for i in (date_start, time_start, date_end, time_end)):
-            date_start = get_datetime_local_timezone(
-                date=date_start,
-                time=time_start
+        if (max_capacity := self.data.get('max_capacity')) != '':
+            max_capacity = int(max_capacity)
+            new_payload: int = get_inline_sum(
+                data=self.data,
+                pattern=r'^product_warehouse-[0-9]+-payload$'
             )
-            date_end = get_datetime_local_timezone(
-                date=date_end,
-                time=time_end
-            )
 
-            if not is_vehicle_available(
-                vehicle=vehicle,
-                date_start=date_start,
-                date_end=date_end
-            ):
-                raise ValidationError(message='Машина занята в это время.')
+            if new_payload > max_capacity:
+                raise ValidationError(
+                    message='Склад не сможет вместить такое количество товаров'
+                            + f' ({new_payload} > {max_capacity}).'
+                )
 
-        return vehicle
-
-
-class VehicleOrderInlineForm(VehicleInlineBaseForm):
-    pattern = r'^vehicle_order-[0-9]+-vehicle$'
+        return cleaned_data
 
     class Meta:
-        fields = ('vehicle',)
-        model = VehicleOrder
-
-
-class VehicleTransitInlineForm(VehicleInlineBaseForm):
-    pattern = r'^vehicle_transit-[0-9]+-vehicle$'
-
-    class Meta:
-        fields = ('vehicle',)
-        model = VehicleTransit
+        fields = ('product', 'payload')
+        model = ProductWarehouse
 
 
 class ShopForm(ModelForm):
+    """Form for Shop model."""
     def clean_name(self):
-        name = self.cleaned_data.get('name')
+        """
+        Custom validation while creating new shop -- checks that name is
+        available.
+        """
+        name: str = self.cleaned_data.get('name')
         if Shop.objects.filter(name=name).exists():
             raise ValidationError(
                 message='Магазин с таким названием уже существует.'
@@ -164,3 +143,55 @@ class ShopForm(ModelForm):
     class Meta:
         fields = ('address', 'name', 'owner')
         model = Shop
+
+
+class VehicleInlineBaseForm(ModelForm):
+    """Base form for Vehicle inline instance."""
+    def clean_vehicle(self):
+        """
+        Custom validation while creating instance that contains vehicle --
+        checks that vehicle is available at given time range.
+        """
+        vehicle: Vehicle = self.cleaned_data.get('vehicle')
+        date_start: str = self.data.get('date_start_0')
+        time_start: str = self.data.get('date_start_1')
+        date_end: str = self.data.get('date_end_0')
+        time_end: str = self.data.get('date_end_1')
+
+        if all(i for i in (date_start, time_start, date_end, time_end)):
+            date_start: datetime = get_datetime_local_timezone(
+                date=date_start,
+                time=time_start
+            )
+            date_end: datetime = get_datetime_local_timezone(
+                date=date_end,
+                time=time_end
+            )
+
+            if not is_vehicle_available(
+                date_end=date_end,
+                date_start=date_start,
+                vehicle=vehicle
+            ):
+                raise ValidationError(
+                    message='Машина занята в это время.'
+                )
+
+        return vehicle
+
+    class Meta:
+        fields = ('vehicle',)
+
+
+class VehicleOrderInlineForm(VehicleInlineBaseForm):
+    """Inline entity attached to VehicleOrder model. Used in Order instance."""
+    class Meta(VehicleInlineBaseForm.Meta):
+        model = VehicleOrder
+
+
+class VehicleTransitInlineForm(VehicleInlineBaseForm):
+    """
+    Inline entity attached to VehicleTransit model. Used in Transit instance.
+    """
+    class Meta(VehicleInlineBaseForm.Meta):
+        model = VehicleTransit

@@ -1,16 +1,18 @@
 from datetime import timedelta
+
 from django.core.validators import (EmailValidator, MaxValueValidator,
                                     MinValueValidator, RegexValidator)
-from django.db.models import (CASCADE, CharField, DateTimeField, F, ForeignKey,
-                              Model, PositiveIntegerField, BooleanField,
+from django.db.models import (CASCADE, BooleanField, CharField, DateTimeField,
+                              F, ForeignKey, Model, PositiveIntegerField,
                               PositiveSmallIntegerField, Q)
 from django.db.models.constraints import CheckConstraint, UniqueConstraint
 from warehouses.settings import (MAX_ADDRESS_LENGTH, MAX_EMAIL_LENGTH,
                                  MAX_NAME_LENGTH, MAX_PRODUCT_NAME_LENGTH,
+                                 MAX_SHOP_NAME_LENGTH,
                                  MAX_VEHICLE_BRAND_LENGTH,
                                  MAX_WAREHOUSE_NAME_LENGTH, MIN_ARTICLE_NUMBER,
                                  ORDER_DAYS_MAX_OFFSET, ORDER_DAYS_MIN_OFFSET,
-                                 VIN_LENGTH, MAX_SHOP_NAME_LENGTH)
+                                 VIN_LENGTH)
 
 from .utils import get_now_datetime
 
@@ -105,12 +107,15 @@ class Owner(Model):
     class Meta:
         db_table = 'owner'
         managed = False
-        ordering = ('-id',)
+        ordering = ('id',)
         verbose_name = 'Владелец'
         verbose_name_plural = 'Владельцы'
 
     def __str__(self):
         return f'{self.first_name} {self.last_name}'
+
+    def __repr__(self):
+        return f'Owner: {self.id}# {self.email}'
 
 
 class Product(Model):
@@ -138,9 +143,9 @@ class Product(Model):
             ),
         )
         db_table = 'product'
-        managed = False
-        ordering = ('-id',)
         index_together = ('name', 'article_number'),
+        managed = False
+        ordering = ('id',)
         verbose_name = 'Товар'
         verbose_name_plural = 'Товары'
 
@@ -224,7 +229,8 @@ class ProductTransit(Model):
         return ''
 
     def __repr__(self):
-        return f'Состав поставки {self.transit.date_start.date()}'
+        return (f'Состав поставки #{self.transit.id} '
+                f'{self.transit.date_start.date()}')
 
 
 class ProductWarehouse(Model):
@@ -458,7 +464,7 @@ class VehicleTransit(Model):
         return ''
 
     def __repr__(self):
-        return f'Машина {self.vehicle} в поставке {self.transit.id}'
+        return f'Машина {self.vehicle} в поставке #{self.transit.id}'
 
 
 class Warehouse(Model):
@@ -471,8 +477,8 @@ class Warehouse(Model):
         verbose_name='Вместимость склада (т)'
     )
     name = CharField(
-        unique=True,
         max_length=MAX_WAREHOUSE_NAME_LENGTH,
+        unique=True,
         verbose_name='Название склада'
     )
     owner = ForeignKey(
