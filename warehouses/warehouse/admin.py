@@ -1,180 +1,44 @@
+from django.conf import settings
 from django.contrib import admin
-from django.contrib.admin import ModelAdmin, TabularInline
+from django.contrib.admin import ModelAdmin as BaseModelAdmin
 from django.contrib.admin.actions import delete_selected
-from django.db.models import Sum, F
-from .utils import get_diff_order, get_diff_transit
+from django.db.models import Sum
 
-from .forms import (ProductOrderInlineForm, ProductTransitInlineForm,
-                    ProductWarehouseInlineForm, ShopForm,
-                    VehicleOrderInlineForm, VehicleTransitInlineForm)
-from .models import (Order, Owner, Product, ProductOrder, ProductTransit,
-                     ProductWarehouse, Shop, Transit, Vehicle, VehicleOrder,
-                     VehicleTransit, Warehouse)
+from .forms import ShopForm
+from .inlines import (OrderInline, ProductOrderInline, ProductTransitInline,
+                      ProductWarehouseInline, ShopInline, TransitInline,
+                      VehicleInline, VehicleOrderInline, VehicleTransitInline,
+                      WarehouseInline)
+from .mixins import NoChangePermissionMixin
+from .models import (Order, Owner, Product, ProductWarehouse, Shop, Transit,
+                     Vehicle, Warehouse)
+from .utils import get_diff_order, get_diff_transit
 
 delete_selected.short_description = 'Удалить'
 
 
-class ReadOnlyInlineMixin:
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_delete_permission(self, request, obj=None):
-        return False
-
-
-class ModelAdminListPerPage20(ModelAdmin):
-    list_per_page = 20
-
-
-class DefaultInline(TabularInline):
-    extra = 0
-    readonly_fields = ('id',)
-    can_delete = False
-
-
-class ProductTransitInline(DefaultInline):
-    model = ProductTransit
-    min_num = 1
-    can_delete = True
-    form = ProductTransitInlineForm
-
-    def get_max_num(self, request, obj=None):
-        return Product.objects.count()
-
-
-class ProductWarehouseInline(DefaultInline):
-    """
-    Allows to inspect products at existing warehouse and create unlimited
-    count of new products that have to be set at new warehouse while creating
-    it.
-    """
-    model = ProductWarehouse
-    form = ProductWarehouseInlineForm
-
-    def get_readonly_fields(self, request, obj=None):
-        """
-        If warehouse already exists where is no ability to change anything.
-        If warehouse is creating, products and payloads may be changed.
-        """
-        return ('product', 'payload') if obj is not None else ()
-
-    def get_max_num(self, request, obj=None):
-        return Product.objects.count() if obj is None else 0
-
-
-class VehicleTransitInline(DefaultInline):
-    model = VehicleTransit
-    min_num = 1
-    can_delete = True
-    form = VehicleTransitInlineForm
-
-    def get_max_num(self, request, obj=None):
-        return Vehicle.objects.count()
-
-
-class VehicleInline(DefaultInline):
-    model = Vehicle
-    show_change_link = True
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-
-class WarehouseInline(DefaultInline):
-    model = Warehouse
-    readonly_fields = ('id', 'max_capacity')
-    show_change_link = True
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-
-class ProductOrderInline(DefaultInline):
-    model = ProductOrder
-    can_delete = True
-    form = ProductOrderInlineForm
-    min_num = 1
-
-    def get_max_num(self, request, obj=None):
-        return Product.objects.count()
-
-
-class OrderInline(DefaultInline):
-    verbose_name_plural = 'Ожидаемые поставки в магазин'
-    model = Order
-    fields = (
-        'date_start',
-        'date_end',
-        'warehouse'
-    )
-    show_change_link = True
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(accepted=False)
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-class TransitInline(DefaultInline):
-    verbose_name_plural = 'Ожидаемые поставки на склад'
-    model = Transit
-    fields = (
-        'date_start',
-        'date_end'
-    )
-    show_change_link = True
-
-    def get_queryset(self, request):
-        return super().get_queryset(request).filter(accepted=False)
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-class VehicleOrderInline(DefaultInline):
-    model = VehicleOrder
-    min_num = 1
-    can_delete = True
-    form = VehicleOrderInlineForm
-
-    def get_max_num(self, request, obj=None):
-        return Vehicle.objects.count()
+class ModelAdmin(BaseModelAdmin):
+    list_per_page = settings.LIST_PER_PAGE
 
 
 @admin.register(Order)
-class OrderAdmin(ModelAdminListPerPage20):
-    list_display = (
-        'id',
-        'accepted',
-        'date_start',
-        'date_end',
-        'shop',
-        'warehouse'
-    )
-    search_fields = ('date_start', 'date_end',)
-    list_filter = ('warehouse', 'accepted', 'date_start', 'date_end')
-    date_hierarchy = 'date_start'
+class OrderAdmin(NoChangePermissionMixin, ModelAdmin):
     actions = ('accept_order',)
+    date_hierarchy = 'date_start'
     inlines = (ProductOrderInline, VehicleOrderInline)
+    list_display = ('id', 'accepted', 'date_start', 'date_end', 'shop',
+                    'warehouse')
+    list_filter = ('warehouse', 'accepted', 'date_start', 'date_end')
+    readonly_fields = ('accepted', 'id')
+    search_fields = ('date_start', 'date_end')
 
     @admin.action(description='Осуществлено')
     def accept_order(self, request, queryset):
+        """
+        If product's payload from order is equal to value in related warehouse,
+        delete object from ProductWarehouse model, else substracts difference
+        value; mark the order as accepted.
+        """
         for order in queryset.filter(accepted=False):
             for product, diff in get_diff_order(order).items():
                 if (obj := ProductWarehouse.objects.get(
@@ -189,81 +53,70 @@ class OrderAdmin(ModelAdminListPerPage20):
             order.accepted = True
             order.save()
 
-    def get_readonly_fields(self, request, obj=None):
-        return ('accepted', 'id') if obj is None else ('id',)
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-class ShopInline(DefaultInline):
-    model = Shop
-    show_change_link = True
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
 
 @admin.register(Owner)
-class OwnerAdmin(ModelAdminListPerPage20):
+class OwnerAdmin(ModelAdmin):
+    inlines = (VehicleInline, WarehouseInline, ShopInline)
     list_display = ('id', 'first_name', 'last_name', 'email')
     list_display_links = ('first_name',)
-    search_fields = ('first_name', 'last_name', 'email')
-    inlines = (VehicleInline, WarehouseInline, ShopInline)
-
-
-@admin.register(Warehouse)
-class WarehouseAdmin(ModelAdminListPerPage20):
-    list_display = (
-        'id',
-        'address',
-        'name',
-        'total_payload',
-        'max_capacity',
-        'owner',
-        'unaccepted_transits_count'
-    )
-    list_display_links = ('address',)
-    search_fields = ('address', 'name', 'email', 'owner')
-    list_filter = ('owner',)
+    search_fields = ('email', 'first_name', 'last_name')
 
     def get_inlines(self, request, obj=None):
-        if obj is not None:
-            return (ProductWarehouseInline, TransitInline)
+        """
+        If owner is being created inlines (vehicle, warehouse and shop) will
+        not be shown. In other cases all inlines will be shown.
+        """
+        return (VehicleInline, WarehouseInline, ShopInline) if obj else ()
 
-        return (ProductWarehouseInline,)
 
-    def total_payload(self, obj):
-        return obj.product_warehouse.all().aggregate(
-            sum=Sum('payload')
-        ).get('sum') or 0
+@admin.register(Product)
+class ProductAdmin(ModelAdmin):
+    list_display = ('id', 'name', 'article_number')
+    list_display_links = ('name',)
+    search_fields = ('article_number', 'name')
 
-    def get_readonly_fields(self, request, obj=None):
-        return ('max_capacity',) if obj is not None else ()
 
-    def unaccepted_transits_count(self, obj):
-        return Transit.objects.filter(warehouse=obj, accepted=False).count()
+@admin.register(Shop)
+class ShopAdmin(ModelAdmin):
+    form = ShopForm
+    list_display = ('id', 'name', 'address', 'owner', 'unaccepted_order_count')
+    list_display_links = ('name',)
+    list_filter = ('owner', )
+    search_fields = ('address', 'owner')
 
-    unaccepted_transits_count.short_description = 'Ожидает поставок'
+    def get_inlines(self, request, obj=None):
+        """
+        If shop is being created inline (Order) will not be shown.
+        In other cases inline will be shown.
+        """
+        return (OrderInline,) if obj else ()
 
-    total_payload.short_description = 'Текущая загрузка (т)'
+    def unaccepted_order_count(self, obj):
+        """
+        Get count of orders related to current warehouse that was not accepted.
+        """
+        return Order.objects.filter(accepted=False, shop=obj).count()
+
+    unaccepted_order_count.short_description = 'Ожидает поставок'
 
 
 @admin.register(Transit)
-class TransitAdmin(ModelAdminListPerPage20):
-    list_display = ('id', 'accepted', 'date_start', 'date_end', 'warehouse')
-    list_filter = ('date_start', 'date_end', 'accepted')
-    search_fields = ('date_start', 'date_end')
-    readonly_fields = ('accepted', 'id')
+class TransitAdmin(NoChangePermissionMixin, ModelAdmin):
     actions = ('accept_transit',)
     date_hierarchy = 'date_start'
     inlines = (ProductTransitInline, VehicleTransitInline)
+    list_display = ('id', 'accepted', 'date_start', 'date_end', 'warehouse')
+    list_filter = ('date_start', 'date_end', 'accepted')
+    readonly_fields = ('accepted', 'id')
+    search_fields = ('date_start', 'date_end')
 
     @admin.action(description='Осуществлено')
     def accept_transit(self, request, queryset):
+        """
+        If product from transit is not presented in related warehouse, create
+        that row and set difference value as payload else add difference value
+        to payload; mark the transit as accepted.
+        """
         for transit in queryset.filter(accepted=False):
             for product, diff in get_diff_transit(transit).items():
                 if (obj := ProductWarehouse.objects.filter(
@@ -282,46 +135,54 @@ class TransitAdmin(ModelAdminListPerPage20):
             transit.accepted = True
             transit.save()
 
-    def has_change_permission(self, request, obj=None):
-        return False
-
-
-@admin.register(Product)
-class ProductAdmin(ModelAdminListPerPage20):
-    list_display = ('id', 'name', 'article_number')
-    list_display_links = ('name',)
-    search_fields = ('name', 'article_number')
-
 
 @admin.register(Vehicle)
-class VehicleAdmin(ModelAdminListPerPage20):
+class VehicleAdmin(ModelAdmin):
     list_display = ('id', 'brand', 'max_capacity', 'owner', 'vin')
     list_display_links = ('brand',)
-    search_fields = ('max_capacity', 'vin')
     list_filter = ('owner', 'brand')
+    search_fields = ('max_capacity', 'vin')
 
     def get_readonly_fields(self, request, obj=None):
+        """If vehicle is being created allows to set max_capacity."""
         return ('max_capacity',) if obj is not None else ()
 
 
-@admin.register(Shop)
-class ShopAdmin(ModelAdminListPerPage20):
-    list_display = (
-        'id',
-        'name',
-        'address',
-        'owner',
-        'unaccepted_orders_count'
-    )
-    list_display_links = ('name',)
-    search_fields = ('owner', 'address')
-    list_filter = ('owner', )
-    form = ShopForm
-
-    def unaccepted_orders_count(self, obj):
-        return Order.objects.filter(shop=obj, accepted=False).count()
+@admin.register(Warehouse)
+class WarehouseAdmin(ModelAdmin):
+    list_display = ('id', 'address', 'name', 'total_payload', 'max_capacity',
+                    'owner', 'unaccepted_transit_count')
+    list_display_links = ('address',)
+    search_fields = ('address', 'name', 'email', 'owner')
+    list_filter = ('owner',)
 
     def get_inlines(self, request, obj=None):
-        return (OrderInline,) if obj is not None else ()
+        """
+        Allows show only products in warehouse while warehouse is being
+        created. In other cases shows transits additionally.
+        """
+        return (ProductWarehouseInline, TransitInline) if obj else (
+            ProductWarehouseInline,
+        )
 
-    unaccepted_orders_count.short_description = 'Ожидает поставок'
+    def get_readonly_fields(self, request, obj=None):
+        """If warehouse is being created allows to set max_capacity."""
+        return ('max_capacity',) if obj is not None else ()
+
+    def total_payload(self, obj):
+        """
+        Additional column for display that means current warehouse's payload.
+        """
+        return obj.product_warehouse.all().aggregate(
+            sum=Sum('payload')
+        ).get('sum') or 0
+
+    def unaccepted_transit_count(self, obj):
+        """
+        Additional column for display that means transits count which were not
+        accepted.
+        """
+        return Transit.objects.filter(warehouse=obj, accepted=False).count()
+
+    total_payload.short_description = 'Текущая загрузка (т)'
+    unaccepted_transit_count.short_description = 'Ожидает поставок'
