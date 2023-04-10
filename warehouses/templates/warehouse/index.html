@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block title %} TEST {% endblock title %}
+
+{% block main_column %}
+<div class='contaier'>
+  <table style="width:100%">
+    <tr>
+      {% for col in columns %}
+        <th> {{ col }} </th>
+      {% endfor %}
+    </tr>
+    {% for row in data %}
+    <tr>
+        {% for col in row %}
+        <td> {{ col }} </td>
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock main_column %}
+
+{% block right_column %}
+  <b>
+    {{ description }}
+  </b>
+  {% if form %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}     
+      {% for field in form %}
+        <div class="form-group row my-3 p-3">
+          <label for="{{ field.id_for_label }}">
+            {{ field.label }}
+          </label>
+          {{ field }}
+          <small id="{{ field.id_for_label }}-help" class="form-text text-muted">
+            {{ field.help_text|safe }}
+          </small>
+          <div class="error"> 
+            <span class="required text-danger">
+              {{ field.errors }}
+            </span>
+          </div>
+        </div>
+      {% endfor %}
+      <div class="d-flex justify-content-end">
+        <button type="submit" class="btn btn-primary">
+          Отправить
+        </button>
+      </div>
+    </form>
+  {% endif %}
+{% endblock right_column %}

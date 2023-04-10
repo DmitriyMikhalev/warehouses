@@ -1,12 +1,13 @@
-from django.db.models import Sum
-from django.forms import ModelForm, ValidationError
 from datetime import datetime
 
-from .models import (ProductOrder, ProductTransit, ProductWarehouse, Shop,
-                     VehicleOrder, VehicleTransit, Warehouse, Product, Vehicle)
+from django.db.models import Sum
+from django.forms import DateField, Form, ModelForm, ValidationError, CharField
+
+from .models import (Product, ProductOrder, ProductTransit, ProductWarehouse,
+                     Shop, Vehicle, VehicleOrder, VehicleTransit, Warehouse)
 from .utils import (get_datetime_local_timezone, get_inline_sum,
                     get_product_payload_diff, is_vehicle_available)
-
+from django.conf import settings
 
 class ProductOrderInlineForm(ModelForm):
     """Inline entity attached to ProductOrder model. Used in Order instance."""
@@ -123,6 +124,43 @@ class ProductWarehouseInlineForm(ModelForm):
     class Meta:
         fields = ('product', 'payload')
         model = ProductWarehouse
+
+
+class QueryDateForm(Form):
+    date = DateField(label='Введите дату:')
+
+
+class QueryFullnameForm(Form):
+    first_name = CharField(
+        max_length=settings.MAX_NAME_LENGTH,
+        label='Введите имя:'
+    )
+    last_name = CharField(
+        max_length=settings.MAX_NAME_LENGTH,
+        label='Введите фамилию:'
+    )
+
+
+class QuerySixForm(QueryDateForm, QueryFullnameForm):
+    first_name = CharField(
+        max_length=settings.MAX_NAME_LENGTH,
+        label='Введите имя:'
+    )
+    last_name = CharField(
+        max_length=settings.MAX_NAME_LENGTH,
+        label='Введите фамилию:'
+    )
+
+
+class QueryWarehouseNameForm(Form):
+    name = CharField(
+        max_length=settings.MAX_WAREHOUSE_NAME_LENGTH,
+        label='Введите название:'
+    )
+    address = CharField(
+        max_length=settings.MAX_ADDRESS_LENGTH,
+        label='Введите адрес:'
+    )
 
 
 class ShopForm(ModelForm):

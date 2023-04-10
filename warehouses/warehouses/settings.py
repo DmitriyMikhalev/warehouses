@@ -40,10 +40,12 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'warehouses.urls'
 
+TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
+
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [TEMPLATES_DIR],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -55,6 +57,7 @@ TEMPLATES = [
         },
     },
 ]
+
 
 WSGI_APPLICATION = 'warehouses.wsgi.application'
 
@@ -110,7 +113,11 @@ USE_I18N = True
 
 USE_TZ = True
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+
+MEDIA_URL = '/media/'
+
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
@@ -139,3 +146,23 @@ ORDER_DAYS_MIN_OFFSET = 1
 ORDER_DAYS_MAX_OFFSET = 90
 
 LIST_PER_PAGE = 30
+
+QUERY_1_DESCRIPTION = 'Получить имена и электронные адреса всех владельцев складов, машин или магазинов.'
+
+QUERY_2_DESCRIPTION = 'Получить марки и грузоподъемность всех машин с грузоподъемностью менее 15 тонн.'
+
+QUERY_3_DESCRIPTION = 'Получить название, адрес и вместительность склада с наибольшей вместительностью в тоннах.'
+
+QUERY_4_DESCRIPTION = 'Получить названия, адреса, время начала и конца поставки товаров на склады на определенный день.'
+
+QUERY_5_DESCRIPTION = 'Получить имя и фамилию владельца и суммарную вместимость в тоннах его складов для конкретного владельца.'
+
+QUERY_6_DESCRIPTION = 'Получить адреса складов, в которые осуществляют транзит машины определенного владельца в определенный день.'
+
+QUERY_7_DESCRIPTION = 'Получить список машин (марка и грузоподъемность) в порядке убывания грузоподъемности, везущих товары в магазин не ранее 16:00 конкретного дня.'
+
+QUERY_8_DESCRIPTION = 'Получить адреса складов с минимальным числом заказов (магазинами) на определенный день.'
+
+QUERY_9_DESCRIPTION = 'Получить количество поставок на склады длительностью более 3 часов на определенный день.'
+
+QUERY_10_DESCRIPTION = 'Получить наименование, артикул и количество товара, преобладающего по количеству (в тоннах) на определенном складе.'

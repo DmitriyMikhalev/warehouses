@@ -50,7 +50,6 @@ class ProductWarehouseInline(MaxProductChoiceMixin, MutableTabularInline):
     model = ProductWarehouse
 
     def get_readonly_fields(self, request, obj=None):
-        """запрет удаления из существующего"""
         return ('product', 'payload') if obj is not None else ()
 
 
