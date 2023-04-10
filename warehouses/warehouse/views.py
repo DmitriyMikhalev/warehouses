@@ -180,7 +180,7 @@ def query_7(request):
 
     with connection.cursor() as cursor:
         arg = form.cleaned_data.get('date')
-        cursor.execute(f'SELECT * FROM query_7(\'{arg}\') ORDER BY id;')
+        cursor.execute(f'SELECT * FROM query_7(\'{arg}\');')
         context['data'] = cursor.fetchall()
 
     return render(

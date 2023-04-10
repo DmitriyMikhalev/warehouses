@@ -181,8 +181,8 @@ QUERY_7_CMD = """
             INNER JOIN
                 order_table ON order_table.id = vehicle_order.order_id
             WHERE
-                EXTRACT(HOUR FROM order_table.date_start) >= 16 AND
-                order_table.date_start::date = $1
+                order_table.date_start::date = $1 AND
+                EXTRACT(HOUR FROM order_table.date_start) <= 17
             ORDER BY
                 vehicle.max_capacity DESC;
     END; $$
@@ -255,7 +255,7 @@ QUERY_10_CMD = """
             id INTEGER,
             name VARCHAR,
             article_number INTEGER,
-            tonnage BIGINT
+            payload INTEGER
         )
     AS $$
     BEGIN
@@ -264,7 +264,7 @@ QUERY_10_CMD = """
                 product.id,
                 product.name,
                 product.article_number,
-                SUM(product_warehouse.payload) as tonnage
+                product_warehouse.payload
             FROM
                 warehouse
             INNER JOIN
@@ -272,13 +272,20 @@ QUERY_10_CMD = """
             INNER JOIN
                 product ON product.id = product_warehouse.product_id
             WHERE
-                LOWER(warehouse.name) = LOWER($1)
-                AND LOWER(warehouse.address) = LOWER($2)
-            GROUP BY
-                product.id
-            ORDER BY
-                tonnage DESC
-            LIMIT 1;
+                product_warehouse.payload = (
+                    SELECT
+                        MAX(product_warehouse.payload)
+                    FROM
+                        warehouse
+                    INNER JOIN
+                        product_warehouse ON product_warehouse.warehouse_id = warehouse.id
+                    INNER JOIN
+                        product ON product.id = product_warehouse.product_id
+                    WHERE
+                        LOWER(warehouse.name) = LOWER($1)
+                        AND LOWER(warehouse.address) = LOWER($2)
+                ) AND LOWER(warehouse.name) = LOWER($1)
+                  AND LOWER(warehouse.address) = LOWER($2);
     END; $$
 
     LANGUAGE 'plpgsql';

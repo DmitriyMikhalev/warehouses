@@ -1,4 +1,3 @@
-from django.contrib import admin
 from django.urls import path
 
 from .views import (index, query_1, query_2, query_3, query_4, query_5,
@@ -7,6 +6,7 @@ from .views import (index, query_1, query_2, query_3, query_4, query_5,
 app_name = 'warehouses'
 
 urlpatterns = [
+    path('', index, name='index'),
     path('query-1/', query_1, name='query_1'),
     path('query-2/', query_2, name='query_2'),
     path('query-3/', query_3, name='query_3'),
