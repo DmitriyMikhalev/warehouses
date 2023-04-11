@@ -9,6 +9,7 @@ from .utils import (get_datetime_local_timezone, get_inline_sum,
                     get_product_payload_diff, is_vehicle_available)
 from django.conf import settings
 
+
 class ProductOrderInlineForm(ModelForm):
     """Inline entity attached to ProductOrder model. Used in Order instance."""
     def clean_payload(self):
@@ -142,14 +143,7 @@ class QueryFullnameForm(Form):
 
 
 class QuerySixForm(QueryDateForm, QueryFullnameForm):
-    first_name = CharField(
-        max_length=settings.MAX_NAME_LENGTH,
-        label='Введите имя:'
-    )
-    last_name = CharField(
-        max_length=settings.MAX_NAME_LENGTH,
-        label='Введите фамилию:'
-    )
+    pass
 
 
 class QueryWarehouseNameForm(Form):

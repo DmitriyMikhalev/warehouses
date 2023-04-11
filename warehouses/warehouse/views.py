@@ -73,7 +73,7 @@ def query_4(request):
     context = {
         'description': settings.QUERY_4_DESCRIPTION,
         'form': form,
-        'columns': ('id', 'name', 'address', 'date_start', 'date_end')
+        'columns': ('id', 'name', 'address', 'date_start with TZ', 'date_end with TZ')
     }
 
     if not form.is_valid():
@@ -134,7 +134,7 @@ def query_6(request):
     context = {
         'description': settings.QUERY_6_DESCRIPTION,
         'form': form,
-        'columns': ('id', 'address', 'date')
+        'columns': ('id', 'address', 'date with TZ')
     }
 
     if not form.is_valid():
@@ -168,7 +168,7 @@ def query_7(request):
     context = {
         'description': settings.QUERY_7_DESCRIPTION,
         'form': form,
-        'columns': ('id', 'brand', 'max_capacity', 'date_start')
+        'columns': ('id', 'brand', 'max_capacity', 'date_start with TZ')
     }
 
     if not form.is_valid():

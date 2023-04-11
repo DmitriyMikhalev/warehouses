@@ -91,7 +91,7 @@ QUERY_4_CMD = """
             INNER JOIN
                 warehouse ON warehouse.id = transit.warehouse_id
             WHERE
-                transit.date_start::date = $1;
+                (transit.date_start AT TIME ZONE 'UTC')::date = $1;
     END; $$
 
     LANGUAGE 'plpgsql';
@@ -152,7 +152,7 @@ QUERY_6_CMD = """
             WHERE
                 LOWER(owner.first_name) = LOWER($1) AND
                 LOWER(owner.last_name) = LOWER($2) AND
-                transit.date_start::date = $3;
+                (transit.date_start AT TIME ZONE 'UTC')::date = $3;
     END; $$
 
     LANGUAGE 'plpgsql';
@@ -181,8 +181,8 @@ QUERY_7_CMD = """
             INNER JOIN
                 order_table ON order_table.id = vehicle_order.order_id
             WHERE
-                order_table.date_start::date = $1 AND
-                EXTRACT(HOUR FROM order_table.date_start) <= 17
+                (order_table.date_start AT TIME ZONE 'UTC')::date = $1 AND
+                EXTRACT(HOUR FROM order_table.date_start AT TIME ZONE 'UTC') <= 17
             ORDER BY
                 vehicle.max_capacity DESC;
     END; $$
@@ -207,7 +207,7 @@ QUERY_8_CMD = """
             INNER JOIN
                 order_table ON order_table.warehouse_id = warehouse.id
             WHERE
-                order_table.date_start::date = $1
+                (order_table.date_start AT TIME ZONE 'UTC')::date = $1
             GROUP BY
                 warehouse.id
             HAVING
@@ -217,7 +217,7 @@ QUERY_8_CMD = """
                     FROM
                         order_table
                     WHERE
-                        order_table.date_start::date = $1
+                        (order_table.date_start AT TIME ZONE 'UTC')::date = $1
                     GROUP BY
                         order_table.warehouse_id
                     ORDER BY
@@ -242,7 +242,7 @@ QUERY_9_CMD = """
             FROM
                 transit
             WHERE
-                transit.date_start::date = $1
+                (transit.date_start AT TIME ZONE 'UTC')::date = $1
                 AND EXTRACT(epoch FROM transit.date_end - transit.date_start) > 10800;
     END; $$
 
