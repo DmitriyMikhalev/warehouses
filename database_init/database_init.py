@@ -25,8 +25,8 @@ def create(db_connection: connection, commands: list[str]) -> None:
 def main() -> None:
     with closing(psycopg2.connect(
         database=os.getenv('DB_NAME'),
-        user=os.getenv('DB_USER'),
-        password=os.getenv('DB_PASSWORD'),
+        user=os.getenv('POSTGRES_USER'),
+        password=os.getenv('POSTGRES_PASSWORD'),
         host=os.getenv('DB_HOST'),
         port=os.getenv('DB_PORT'))
     ) as connection:

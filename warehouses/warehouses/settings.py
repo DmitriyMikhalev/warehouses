@@ -11,7 +11,7 @@ load_dotenv(dotenv_path=DOTENV_PATH)
 
 SECRET_KEY = os.getenv('DJANGO_KEY')
 
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -73,11 +73,11 @@ DATABASES = {
             default='db_name'
         ),
         'USER': os.getenv(
-            key='DB_USER',
+            key='POSTGRES_USER',
             default='db_user'
         ),
         'PASSWORD': os.getenv(
-            key='DB_PASSWORD',
+            key='POSTGRES_PASSWORD',
             default='password'
         ),
         'HOST': os.getenv(
