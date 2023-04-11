@@ -2,64 +2,68 @@
 <header>
   <nav class="navbar navbar-light" style="background-color: rgb(199, 255, 254);">
     <div class="container">
-      {% with request.resolver_match.view_name as view_name %}
+      {% with request.resolver_match.kwargs.query_index as index %}
       <ul class="nav nav-pills">
         {% if request.user.is_authenticated %}
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_1' %} active {% endif %}" 
-          href="{% url 'warehouses:query_1' %}"> Запрос 1 </a>
+          <a class="nav-link {% if index == 1 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 1 %}"> Запрос 1 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_2' %} active {% endif %}" 
-          href="{% url 'warehouses:query_2' %}"> Запрос 2 </a>
+          <a class="nav-link {% if index == 2 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 2 %}"> Запрос 2 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_3' %} active {% endif %}" 
-          href="{% url 'warehouses:query_3' %}"> Запрос 3 </a>
+          <a class="nav-link {% if index == 3 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 3 %}"> Запрос 3 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_4' %} active {% endif %}" 
-          href="{% url 'warehouses:query_4' %}">Запрос 4</a>
+          <a class="nav-link {% if index == 4 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 4 %}"> Запрос 4 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_5' %} active {% endif %}" 
-          href="{% url 'warehouses:query_5' %}">Запрос 5</a>
+          <a class="nav-link {% if index == 5 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 5 %}"> Запрос 5 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_6' %} active {% endif %}" 
-          href="{% url 'warehouses:query_6' %}">Запрос 6</a>
+          <a class="nav-link {% if index == 6 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 6 %}"> Запрос 6 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_7' %} active {% endif %}" 
-          href="{% url 'warehouses:query_7' %}">Запрос 7</a>
+          <a class="nav-link {% if index == 7 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 7 %}">Запрос 7 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_8' %} active {% endif %}" 
-          href="{% url 'warehouses:query_8' %}">Запрос 8</a>
+          <a class="nav-link {% if index == 8 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 8 %}">Запрос 8 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_9' %} active {% endif %}" 
-          href="{% url 'warehouses:query_9' %}">Запрос 9</a>
+          <a class="nav-link {% if index == 9 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 9 %}"> Запрос 9 </a>
         </li>
         <li class="nav-item"> 
-          <a class="nav-link {% if view_name == 'warehouses:query_10' %} active {% endif %}" 
-          href="{% url 'warehouses:query_10' %}">Запрос 10</a>
+          <a class="nav-link {% if index == 10 %} active {% endif %}" 
+          href="{% url 'warehouses:query_view' 10 %}"> Запрос 10 </a>
         </li>
         <li>
           Пользователь: {{ user.username }}
         </li>
+        {% with request.resolver_match.view_name as view_name %}
         <li class="nav-item"> 
           <a class="nav-link {% if view_name == 'users:logout' %} active {% endif %}" 
-          href="">Выйти</a>
+          href=""> Выйти </a>
         </li>
+        {% endwith %}
         {% else %}
+        {% with request.resolver_match.view_name as view_name %}
         <li class="nav-item"> 
-          <a class="nav-link link-light {% if view_name == 'users:login' %} active {% endif %}" 
-          href="">Войти</a>
+          <a class="nav-link link-light {% if view == 'users:login' %} active {% endif %}" 
+          href=""> Войти </a>
         </li>
+        {% endwith %}
         {% endif %}
-      </ul>
       {% endwith %}
+      </ul>
     </div>
-  </nav>      
+  </nav>
 </header>
