@@ -15,6 +15,7 @@ from .models import (Order, Owner, Product, ProductWarehouse, Shop, Transit,
 from .utils import get_diff_order, get_diff_transit
 
 delete_selected.short_description = 'Удалить'
+admin.site.site_header = 'Администрирование'
 
 
 class ModelAdmin(BaseModelAdmin):

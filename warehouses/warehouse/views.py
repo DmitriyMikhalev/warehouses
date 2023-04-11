@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.db import connection
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 from .forms import (QueryDateForm, QueryFullnameForm, QuerySixForm,
                     QueryWarehouseNameForm)
@@ -113,6 +114,7 @@ QUERY_INFO = {
 }
 
 
+@login_required
 def index(request):
     return render(
         request=request,
@@ -120,6 +122,7 @@ def index(request):
     )
 
 
+@login_required
 def query_view(request, query_index):
     template_name = 'warehouse/index.html'
     params = QUERY_INFO.get(query_index)

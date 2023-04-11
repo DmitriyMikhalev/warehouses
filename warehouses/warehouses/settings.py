@@ -25,7 +25,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'warehouse.apps.WarehouseConfig'
+    'warehouse.apps.WarehouseConfig',
+    'users.apps.UsersConfig'
 ]
 
 MIDDLEWARE = [
@@ -166,3 +167,9 @@ QUERY_8_DESCRIPTION = 'Получить адреса складов с мини�
 QUERY_9_DESCRIPTION = 'Получить количество поставок на склады длительностью более 3 часов на определенный день в UTC.'
 
 QUERY_10_DESCRIPTION = 'Получить наименование, артикул и количество товаров, преобладающих по количеству (в тоннах) на определенном складе.'
+
+LOGIN_URL = 'users:login'
+
+LOGIN_REDIRECT_URL = 'warehouses:index'
+
+AUTH_USER_MODEL = 'users.User'
